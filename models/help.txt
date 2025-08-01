@@ -1,0 +1,3 @@
+=========
+
+Models é a pasta para guardar os modelos de MachineLearning treinados para reutilizar
