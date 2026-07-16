@@ -1,3 +1,6 @@
 *.csv
-.xlsx
+*.xlsx
 .venv
+*.png
+*.keras
+__pycache__
