@@ -112,10 +112,15 @@ class CommentValidator:
         return temp.strip() == ""
         
     def _contem_letras_nao_permitidas(self, comentario: str) -> bool:
-        """Verifica se há letras no comentário ignorando os tokens permitidos (S, SELO, ZELO, NR DI, NR RE, R, NR IM)"""
+        """Verifica se há letras no comentário ignorando os tokens permitidos, prefixos de medidores/postes e códigos de notas"""
         temp = comentario.upper()
+        # 1. Remover códigos de outras notas (ex: T111, T181, P111, B111, R111, E101, L131, C121, etc.)
+        temp = re.sub(r'\b[A-Z]\d{3}\b', '', temp)
+        # 2. Remover tokens permitidos (SELO, ZELO, NR DI, NR RE, NR IM, R, S)
         for token in sorted(self.tokens_permitidos, key=len, reverse=True):
             temp = re.sub(r'\b' + token + r'\b', '', temp)
+        # 3. Remover nomenclaturas de medidores/postes que contêm letras antes dos números (ex: S202184113, s138628, M123456, X123, MV08207, NF16588, MD99028, MC75130)
+        temp = re.sub(r'\b[A-Z]{1,2}\d+\b', '', temp)
         return bool(re.search(r'[A-ZÁ-Ú]', temp))
     
     def _validar_conteudo_requerido(self, nota: str, comentario: str, regra: Dict) -> str:
@@ -177,19 +182,19 @@ class CommentValidator:
         return self._validar_medidor_leitura(comentario)
     
     def _validar_formato_poste(self, comentario: str) -> str:
-        """Valida formato: M000000 (1 letra M e 6 números) ou X seguido de número"""
+        """Valida formato: M000000/S000000 (1 letra M ou S e 6 números) ou X seguido de número"""
         if not re.search(r'\d', comentario):
             return "NI"
             
         if self._contem_letras_nao_permitidas(comentario):
-            coment_sem_poste = re.sub(r'[MX]\d+', '', comentario, flags=re.IGNORECASE)
+            coment_sem_poste = re.sub(r'[SMX]\d+', '', comentario, flags=re.IGNORECASE)
             if self._contem_letras_nao_permitidas(coment_sem_poste):
                 return "CFP"
                 
-        padrao_m = r'M\d{6}'
+        padrao_ms = r'[SM]\d{6}'
         padrao_x = r'X\d+'
         
-        if re.search(padrao_m, comentario, re.IGNORECASE) or re.search(padrao_x, comentario, re.IGNORECASE):
+        if re.search(padrao_ms, comentario, re.IGNORECASE) or re.search(padrao_x, comentario, re.IGNORECASE):
             return "C"
             
         return "CI"
@@ -314,7 +319,11 @@ if __name__ == "__main__":
         ("P111", "6252237400 03 999999 103 999999", "C"), # Medidor + múltiplos códigos/leituras -> C
         ("P111", "5257431454 03 140 103 0", "C"), # Medidor + múltiplos códigos/leituras -> C
         ("R111", "3010214262 3243797216 103 22851", "C"), # Dois medidores + código/leitura no R111 -> C
-        ("P111", "6252079651 03 3 103 0", "C") # Medidor + múltiplos códigos/leituras -> C
+        ("P111", "6252079651 03 3 103 0", "C"), # Medidor + múltiplos códigos/leituras -> C
+        ("T181", "55 41205 T111", "C"), # Outra nota mencionada dentro do comentário -> C
+        ("P111", "S202184113 T181 103 24 03 00312", "C"), # Medidor com prefixo S + menção a outra nota -> C
+        ("E101", "s138628", "C"), # Nomenclatura de poste com S + 6 dígitos -> C
+        ("E101", "s138629", "C") # Nomenclatura de poste com S + 6 dígitos -> C
     ]
     
     print("Testes de validacao:")

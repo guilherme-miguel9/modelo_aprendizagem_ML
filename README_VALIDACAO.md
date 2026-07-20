@@ -39,7 +39,10 @@ O sistema classifica os comentários em 8 categorias:
 ## Regras e Especificidades por Tipo de Nota
 
 ### Regras Gerais e Tokens Permitidos
-- **Tokens Permitidos (`S`, `SELO`, `ZELO`, `NR DI`, `NR RE`, `R`, `NR IM`):** Podem aparecer em **qualquer nota** sem serem considerados letras inválidas para `CFP`.
+- **Tokens Permitidos (`S`, `SELO`, `ZELO`, `NR DI`, `NR RE`, `R`, `NR IM`), Prefixos (`S`, `M`, `X`, `MV`, `NF`) e Referências a Notas:**
+  - Podem aparecer em **qualquer nota** sem serem considerados letras inválidas para `CFP`.
+  - **Menção a outras notas:** Códigos no formato `[A-Z] + 3 dígitos` (ex: `T111`, `T181`, `P111`, etc.) informados dentro do comentário são perfeitamente aceitos e ignorados na checagem de letras proibidas.
+  - **Prefixos em medidores/postes:** Letras prefixadas a números (ex: `S202184113`, `s138628`, `MV08207`) fazem parte da nomenclatura e não disparam `CFP`.
   - **Uso isolado (somente o token):** É aceito como Conforme (`C`) **apenas** nas notas que não exigem comentário numérico (`L131`, `T171`, `P191`, `T161`). Em notas que exigem comentário obrigatório (`B111`, `P111`, `T181`, etc.), o uso isolado do token é classificado como `NI` (Nota Incorreta).
 - **Prefixos `103` ou `55` (+ até 6 dígitos):** Permitidos em **todas as notas**. Representam numerações válidas (ex: `103123456` ou `55 123456`) sem estourar o limite de números da nota.
 - **Regra e Restrição do `03` (`T181`, `R111` vs `P111` e demais):**
@@ -54,12 +57,12 @@ O sistema classifica os comentários em 8 categorias:
 
 **Regra:** Exigem 2 ou mais números, permitindo que um ou dois medidores sejam seguidos por múltiplos pares de códigos (de até 3 dígitos) e leituras (de até 6 dígitos), ex: `3203600940 3 012051 24 001929` ou `6252237400 03 999999 103 999999`. Comentários puramente textuais retornam `NI`.
 
-### Notas que requerem Nº DO POSTE (M000000 ou X000)
+### Notas que requerem Nº DO POSTE (M000000, S000000 ou X000)
 - **E101** - Poste Inclinado ou Quebrado
 - **E111** - Objeto, Árvore, Imóvel Encostado/Próximo à Rede
 - **P231** - Iluminação Pública Acesa Durante o Dia
 
-**Regra:** Exigem formato `M` seguido de 6 dígitos ou `X` seguido de número. Textos sem números geram `NI`.
+**Regra:** Exigem formato `M` ou `S` seguido de 6 dígitos (ex: `M123456`, `s138628`) ou `X` seguido de número. Textos sem números geram `NI`.
 
 ### Notas que requerem TEXTO CONDIZENTE
 - **C111**, **C121**, **C131**, **C151**, **C161**, **C181**, **P191**, **R161**
