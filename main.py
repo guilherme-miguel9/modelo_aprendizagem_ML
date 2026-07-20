@@ -6,27 +6,41 @@ from tkinter import filedialog, messagebox
 import customtkinter as ctk
 import pandas as pd
 
-# Adicionar o diretório raiz e src ao PATH para garantir importações
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'src'))
+# Adicionar o diretório raiz e o subdiretório src ao PATH de forma segura para PyInstaller e dev
+base_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, base_dir)
+src_dir = os.path.join(base_dir, 'src')
+if os.path.exists(src_dir):
+    sys.path.insert(0, src_dir)
 
+# Importação resiliente de regras de validação para modo CLI e modo PyInstaller (.exe)
+aplicar_validacao_func = None
 try:
-    from src.validar_comentarios import carregar_dados, normalizar_colunas
     from src.validation_rules import aplicar_validacao
+    aplicar_validacao_func = aplicar_validacao
 except ImportError:
     try:
         from validation_rules import aplicar_validacao
+        aplicar_validacao_func = aplicar_validacao
+    except ImportError as err:
+        print(f"Aviso ao importar validation_rules: {err}")
+
+try:
+    from src.validar_comentarios import carregar_dados, normalizar_colunas
+except ImportError:
+    try:
+        from validar_comentarios import carregar_dados, normalizar_colunas
     except ImportError:
         pass
 
-# Configuração de tema escuro moderno (Prisma / Foundations Space-Grey & Coral Glow)
+# Configuração de tema escuro com paleta Azul Escuro Navy (Dark Navy Blue)
 ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("blue")
 
 
 class RaisedGlassCard(ctk.CTkFrame):
-    """Card com elevação e profundidade visual (estilo Foundations Raised/Inset Glass)"""
-    def __init__(self, master, corner_radius=20, fg_color="#242632", border_color="#3A3D4E", border_width=1, **kwargs):
+    """Card com elevação e profundidade visual"""
+    def __init__(self, master, corner_radius=18, fg_color="#181A24", border_color="#282C3E", border_width=1, **kwargs):
         super().__init__(
             master=master,
             corner_radius=corner_radius,
@@ -39,17 +53,17 @@ class RaisedGlassCard(ctk.CTkFrame):
 
 class MetricBadge(ctk.CTkFrame):
     """Badge indicador de status e métricas operacionais"""
-    def __init__(self, master, label, value, color="#FF5C4D", **kwargs):
+    def __init__(self, master, label, value, color="#3B82F6", **kwargs):
         super().__init__(
             master=master,
             corner_radius=14,
-            fg_color="#1B1D26",
-            border_color="#2E3140",
+            fg_color="#14161F",
+            border_color="#252838",
             border_width=1,
             **kwargs
         )
         self.label_lbl = ctk.CTkLabel(
-            self, text=label, font=ctk.CTkFont(family="Segoe UI", size=12, weight="bold"), text_color="#9A9DB0"
+            self, text=label, font=ctk.CTkFont(family="Segoe UI", size=12, weight="bold"), text_color="#8E93B0"
         )
         self.label_lbl.pack(pady=(10, 2), padx=12)
         
@@ -63,48 +77,55 @@ class MetricBadge(ctk.CTkFrame):
 
 
 class AuditorComentariosApp(ctk.CTk):
-    """Painel principal do Auditor de Comentários PDA - Design Foundations Space-Grey & Coral"""
+    """Painel principal do Auditor de Comentários PDA - Paleta Azul Escuro Navy & Sidebar Funcional"""
     def __init__(self):
         super().__init__()
 
         # Configuração da Janela Principal
         self.title("Auditor de Comentários — Sistema de Validação PDA")
-        self.geometry("1060x740")
-        self.minsize(920, 660)
-        self.configure(fg_color="#14151C")
+        self.geometry("1080x760")
+        self.minsize(940, 660)
+        self.configure(fg_color="#0F111A")
 
-        # Variáveis de Controle
+        # Variáveis de Controle e Estado
         self.selected_file_path = ctk.StringVar(value="")
         self.sheet_name_var = ctk.StringVar(value="Aud_Coment_Geral")
         self.output_file_path = ctk.StringVar(value="")
         self.is_processing = False
+        self.current_tab = "visao_geral"
 
-        # Grid principal: 2 colunas (Sidebar lateral esquerdo + Painel Central de Cards)
+        # Histórico de sessão
+        self.last_run_time = "Nenhuma auditoria executada nesta sessão"
+        self.last_total_rows = 0
+        self.last_elapsed_secs = 0.0
+
+        # Grid principal: 2 colunas (Sidebar lateral esquerdo + Painel Central multifuncional)
         self.grid_columnconfigure(0, weight=0, minsize=240)
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)
 
         self._build_sidebar()
-        self._build_main_panel()
+        self._build_main_container()
+        self._switch_view("visao_geral")
 
     def _build_sidebar(self):
-        """Painel lateral esquerdo com navegação e resumo do workspace"""
-        sidebar_frame = ctk.CTkFrame(self, fg_color="#1C1D26", corner_radius=0, border_color="#2A2C38", border_width=1)
+        """Painel lateral esquerdo com botões 100% funcionais (Azul Escuro Navy)"""
+        sidebar_frame = ctk.CTkFrame(self, fg_color="#14161F", corner_radius=0, border_color="#222636", border_width=1)
         sidebar_frame.grid(row=0, column=0, sticky="nsew")
         sidebar_frame.grid_rowconfigure(6, weight=1)
 
         # Logo e Identidade
         logo_frame = ctk.CTkFrame(sidebar_frame, fg_color="transparent")
-        logo_frame.grid(row=0, column=0, padx=22, pady=(26, 20), sticky="ew")
+        logo_frame.grid(row=0, column=0, padx=20, pady=(26, 20), sticky="ew")
 
         icon_box = ctk.CTkLabel(
             logo_frame,
             text="⬡",
             font=ctk.CTkFont(family="Segoe UI", size=28, weight="bold"),
-            text_color="#FF5C4D",
+            text_color="#3B82F6",
             width=42,
             height=42,
-            fg_color="#242632",
+            fg_color="#1E2A4A",
             corner_radius=12
         )
         icon_box.grid(row=0, column=0, padx=(0, 12))
@@ -119,101 +140,138 @@ class AuditorComentariosApp(ctk.CTk):
         title_lbl.grid(row=0, column=1, sticky="w")
 
         # Divisor
-        ctk.CTkFrame(sidebar_frame, height=1, fg_color="#2A2C38").grid(row=1, column=0, sticky="ew", padx=16, pady=6)
+        ctk.CTkFrame(sidebar_frame, height=1, fg_color="#222636").grid(row=1, column=0, sticky="ew", padx=16, pady=6)
 
-        # Botões de navegação lateral (estilo PrismaFlow)
-        nav_items = [
-            ("⚡ Visão Geral", True),
-            ("📁 Planilhas", False),
-            ("⚙ Regras e Tokens", False),
-            ("📊 Histórico Auditoria", False),
+        # Botões do Sidebar Funcional
+        self.nav_buttons = {}
+        nav_configs = [
+            ("visao_geral", "⚡ Visão Geral", 2),
+            ("planilhas", "📁 Planilha & Pastas", 3),
+            ("regras", "⚙ Regras & Tokens", 4),
+            ("historico", "📊 Histórico Auditoria", 5),
         ]
 
-        for idx, (label, active) in enumerate(nav_items, start=2):
+        for tab_id, label, row_idx in nav_configs:
             btn = ctk.CTkButton(
                 sidebar_frame,
                 text=label,
-                font=ctk.CTkFont(family="Segoe UI", size=14, weight="bold" if active else "normal"),
-                fg_color="#2C2E3C" if active else "transparent",
-                text_color="#FF5C4D" if active else "#9A9DB0",
-                hover_color="#262834",
+                font=ctk.CTkFont(family="Segoe UI", size=14, weight="bold"),
+                fg_color="transparent",
+                text_color="#8E93B0",
+                hover_color="#1E2436",
                 anchor="w",
-                height=42,
-                corner_radius=12
+                height=44,
+                corner_radius=12,
+                command=lambda tid=tab_id: self._switch_view(tid)
             )
-            btn.grid(row=idx, column=0, padx=16, pady=4, sticky="ew")
+            btn.grid(row=row_idx, column=0, padx=16, pady=5, sticky="ew")
+            self.nav_buttons[tab_id] = btn
 
         # Card de informações operacionais na parte inferior do sidebar
-        info_card = RaisedGlassCard(sidebar_frame, corner_radius=14, fg_color="#181920", border_color="#2A2C38")
+        info_card = RaisedGlassCard(sidebar_frame, corner_radius=14, fg_color="#11131C", border_color="#222636")
         info_card.grid(row=7, column=0, padx=16, pady=24, sticky="ew")
 
         ctk.CTkLabel(
             info_card,
-            text="Validador Regras 2.0",
+            text="Validador PDA v2.0",
             font=ctk.CTkFont(family="Segoe UI", size=12, weight="bold"),
-            text_color="#E2E4F0"
+            text_color="#D8DBE8"
         ).pack(pady=(12, 4), padx=14, anchor="w")
 
         ctk.CTkLabel(
             info_card,
-            text="Múltiplos pares de código/leitura,\nprefixos S e checagem de notas.",
+            text="Paleta Azul Escuro Navy,\nregras de negócio dinâmicas\ne checagem em background.",
             font=ctk.CTkFont(family="Segoe UI", size=11),
-            text_color="#7A7D8F",
+            text_color="#6C728E",
             justify="left"
         ).pack(pady=(0, 12), padx=14, anchor="w")
 
-    def _build_main_panel(self):
-        """Painel central de cards e execução"""
-        main_scroll = ctk.CTkScrollableFrame(
-            self, fg_color="transparent", scrollbar_button_color="#2A2C38", scrollbar_button_hover_color="#3A3D4E"
-        )
-        main_scroll.grid(row=0, column=1, padx=28, pady=20, sticky="nsew")
-        main_scroll.grid_columnconfigure(0, weight=1)
+    def _build_main_container(self):
+        """Container central que abriga os 4 painéis de visualização (abas)"""
+        self.main_container = ctk.CTkFrame(self, fg_color="transparent")
+        self.main_container.grid(row=0, column=1, sticky="nsew")
+        self.main_container.grid_columnconfigure(0, weight=1)
+        self.main_container.grid_rowconfigure(0, weight=1)
 
-        # Cabeçalho da área principal
-        header_frame = ctk.CTkFrame(main_scroll, fg_color="transparent")
-        header_frame.grid(row=0, column=0, pady=(10, 20), sticky="ew")
+        # Construir as 4 views
+        self.views = {}
+        self.views["visao_geral"] = self._create_visao_geral_view()
+        self.views["planilhas"] = self._create_planilhas_view()
+        self.views["regras"] = self._create_regras_view()
+        self.views["historico"] = self._create_historico_view()
+
+    def _switch_view(self, tab_id):
+        """Alterna a visualização ativa entre os botões do sidebar"""
+        self.current_tab = tab_id
+        for tid, btn in self.nav_buttons.items():
+            if tid == tab_id:
+                # Botão ativo em Azul Escuro Navy (#1E3A8A / #1D4ED8)
+                btn.configure(fg_color="#1E3A8A", text_color="#FFFFFF")
+            else:
+                btn.configure(fg_color="transparent", text_color="#8E93B0")
+
+        for tid, view in self.views.items():
+            if tid == tab_id:
+                view.grid(row=0, column=0, padx=28, pady=20, sticky="nsew")
+            else:
+                view.grid_forget()
+
+        # Se mudou para histórico, atualizar informações
+        if tab_id == "historico":
+            self._update_historico_view()
+
+    # =========================================================================
+    # VIEW 1: VISÃO GERAL (Principal)
+    # =========================================================================
+    def _create_visao_geral_view(self):
+        view = ctk.CTkScrollableFrame(
+            self.main_container, fg_color="transparent", scrollbar_button_color="#222636", scrollbar_button_hover_color="#33394E"
+        )
+        view.grid_columnconfigure(0, weight=1)
+
+        # Cabeçalho
+        header_frame = ctk.CTkFrame(view, fg_color="transparent")
+        header_frame.grid(row=0, column=0, pady=(10, 18), sticky="ew")
 
         ctk.CTkLabel(
             header_frame,
-            text="Validação de Comentários de Leitura",
+            text="Auditoria Operacional de Comentários",
             font=ctk.CTkFont(family="Segoe UI", size=24, weight="bold"),
             text_color="#FFFFFF"
         ).grid(row=0, column=0, sticky="w")
 
         ctk.CTkLabel(
             header_frame,
-            text="Carregue a planilha de auditoria para processar e classificar automaticamente cada nota em segundos.",
+            text="Selecione a planilha Excel ou CSV para processar todas as regras operacionais instantaneamente.",
             font=ctk.CTkFont(family="Segoe UI", size=13),
-            text_color="#8E92A4"
+            text_color="#8E93B0"
         ).grid(row=1, column=0, sticky="w", pady=(2, 0))
 
-        # CARD 1: SELEÇÃO DA PLANILHA (Raised Glass Card com botão Coral)
-        file_card = RaisedGlassCard(main_scroll, corner_radius=18, fg_color="#1E202A", border_color="#2E3140")
-        file_card.grid(row=1, column=0, pady=(0, 18), sticky="ew")
+        # CARD 1: SELEÇÃO DA PLANILHA
+        file_card = RaisedGlassCard(view, corner_radius=18, fg_color="#181A24", border_color="#282C3E")
+        file_card.grid(row=1, column=0, pady=(0, 16), sticky="ew")
         file_card.grid_columnconfigure(0, weight=1)
 
         ctk.CTkLabel(
             file_card,
             text="Arquivo de Auditoria (.xlsx, .xlsm, .csv)",
             font=ctk.CTkFont(family="Segoe UI", size=15, weight="bold"),
-            text_color="#E2E4F0"
-        ).grid(row=0, column=0, padx=22, pady=(18, 10), sticky="w")
+            text_color="#D8DBE8"
+        ).grid(row=0, column=0, padx=22, pady=(16, 10), sticky="w")
 
-        # Input de arquivo
         file_input = ctk.CTkFrame(file_card, fg_color="transparent")
-        file_input.grid(row=1, column=0, padx=22, pady=(0, 16), sticky="ew")
+        file_input.grid(row=1, column=0, padx=22, pady=(0, 14), sticky="ew")
         file_input.grid_columnconfigure(0, weight=1)
 
         self.file_entry = ctk.CTkEntry(
             file_input,
             textvariable=self.selected_file_path,
-            placeholder_text="Nenhuma planilha carregada... Clique no botão ao lado para selecionar",
+            placeholder_text="Nenhum arquivo carregado... Clique em 'Selecionar Planilha'",
             font=ctk.CTkFont(family="Segoe UI", size=13),
             height=46,
             corner_radius=12,
-            fg_color="#14151C",
-            border_color="#2E3140",
+            fg_color="#0F111A",
+            border_color="#25293A",
             text_color="#FFFFFF"
         )
         self.file_entry.grid(row=0, column=0, padx=(0, 12), sticky="ew")
@@ -223,25 +281,25 @@ class AuditorComentariosApp(ctk.CTk):
             text="📁 Selecionar Planilha",
             font=ctk.CTkFont(family="Segoe UI", size=13, weight="bold"),
             height=46,
-            width=170,
+            width=175,
             corner_radius=12,
-            fg_color="#FF5C4D",
-            hover_color="#E84A3B",
+            fg_color="#1D4ED8",
+            hover_color="#1E40AF",
             text_color="#FFFFFF",
             command=self._select_file
         )
         select_btn.grid(row=0, column=1)
 
         # Opções de Aba
-        options_box = ctk.CTkFrame(file_card, fg_color="#161820", corner_radius=12, border_color="#242632", border_width=1)
-        options_box.grid(row=2, column=0, padx=22, pady=(0, 18), sticky="ew")
+        options_box = ctk.CTkFrame(file_card, fg_color="#12141D", corner_radius=12, border_color="#222636", border_width=1)
+        options_box.grid(row=2, column=0, padx=22, pady=(0, 16), sticky="ew")
         options_box.grid_columnconfigure(1, weight=1)
 
         ctk.CTkLabel(
             options_box,
             text="Nome da Aba Excel:",
             font=ctk.CTkFont(family="Segoe UI", size=13, weight="bold"),
-            text_color="#A0A4B8"
+            text_color="#A0A5C0"
         ).grid(row=0, column=0, padx=(16, 12), pady=14, sticky="w")
 
         self.sheet_entry = ctk.CTkEntry(
@@ -250,53 +308,53 @@ class AuditorComentariosApp(ctk.CTk):
             font=ctk.CTkFont(family="Segoe UI", size=13),
             height=36,
             corner_radius=8,
-            fg_color="#1C1D26",
-            border_color="#2E3140"
+            fg_color="#181A24",
+            border_color="#282C3E"
         )
         self.sheet_entry.grid(row=0, column=1, padx=(0, 16), pady=14, sticky="ew")
 
-        # CARD 2: STATUS E BARRA DE PROGRESSO
-        self.progress_card = RaisedGlassCard(main_scroll, corner_radius=18, fg_color="#1E202A", border_color="#2E3140")
-        self.progress_card.grid(row=2, column=0, pady=(0, 18), sticky="ew")
+        # CARD 2: STATUS E PROGRESSO (Azul Escuro Navy)
+        self.progress_card = RaisedGlassCard(view, corner_radius=18, fg_color="#181A24", border_color="#282C3E")
+        self.progress_card.grid(row=2, column=0, pady=(0, 16), sticky="ew")
         self.progress_card.grid_columnconfigure(0, weight=1)
 
         self.status_lbl = ctk.CTkLabel(
             self.progress_card,
             text="Pronto para iniciar auditoria operacional",
             font=ctk.CTkFont(family="Segoe UI", size=14, weight="bold"),
-            text_color="#A0A4B8"
+            text_color="#A0A5C0"
         )
-        self.status_lbl.grid(row=0, column=0, padx=22, pady=(18, 10), sticky="w")
+        self.status_lbl.grid(row=0, column=0, padx=22, pady=(16, 10), sticky="w")
 
         self.progress_bar = ctk.CTkProgressBar(
             self.progress_card,
             height=10,
             corner_radius=5,
-            fg_color="#14151C",
-            progress_color="#FF5C4D"
+            fg_color="#0F111A",
+            progress_color="#3B82F6"
         )
         self.progress_bar.grid(row=1, column=0, padx=22, pady=(0, 12), sticky="ew")
         self.progress_bar.set(0)
 
         self.progress_detail_lbl = ctk.CTkLabel(
             self.progress_card,
-            text="Selecione um arquivo .xlsm ou .xlsx para análise de regras de negócio",
+            text="Aguardando seleção de planilha para análise de regras operacionais",
             font=ctk.CTkFont(family="Segoe UI", size=12),
-            text_color="#7A7D8F"
+            text_color="#6C728E"
         )
-        self.progress_detail_lbl.grid(row=2, column=0, padx=22, pady=(0, 18), sticky="w")
+        self.progress_detail_lbl.grid(row=2, column=0, padx=22, pady=(0, 16), sticky="w")
 
         # CARD 3: DASHBOARD DE MÉTRICAS (GRID)
-        self.results_card = RaisedGlassCard(main_scroll, corner_radius=18, fg_color="#1E202A", border_color="#2E3140")
-        self.results_card.grid(row=3, column=0, pady=(0, 20), sticky="ew")
+        self.results_card = RaisedGlassCard(view, corner_radius=18, fg_color="#181A24", border_color="#282C3E")
+        self.results_card.grid(row=3, column=0, pady=(0, 18), sticky="ew")
         self.results_card.grid_columnconfigure((0, 1, 2, 3), weight=1)
 
         ctk.CTkLabel(
             self.results_card,
-            text="Indicadores de Conformidade (Análises Geradas)",
+            text="Indicadores e Distribuição da Auditoria",
             font=ctk.CTkFont(family="Segoe UI", size=15, weight="bold"),
-            text_color="#E2E4F0"
-        ).grid(row=0, column=0, columnspan=4, padx=22, pady=(18, 12), sticky="w")
+            text_color="#D8DBE8"
+        ).grid(row=0, column=0, columnspan=4, padx=22, pady=(16, 12), sticky="w")
 
         self.badges = {}
         metric_configs = [
@@ -315,10 +373,10 @@ class AuditorComentariosApp(ctk.CTk):
             badge.grid(row=row, column=col, padx=10, pady=8, sticky="nsew")
             self.badges[key] = badge
 
-        ctk.CTkLabel(self.results_card, text="", height=8).grid(row=3, column=0, columnspan=4)
+        ctk.CTkLabel(self.results_card, text="", height=6).grid(row=3, column=0, columnspan=4)
 
-        # RODAPÉ DE AÇÃO PRINCIPAL
-        footer_frame = ctk.CTkFrame(main_scroll, fg_color="transparent")
+        # RODAPÉ DE AÇÃO
+        footer_frame = ctk.CTkFrame(view, fg_color="transparent")
         footer_frame.grid(row=4, column=0, pady=(4, 20), sticky="ew")
         footer_frame.grid_columnconfigure(0, weight=1)
 
@@ -328,8 +386,8 @@ class AuditorComentariosApp(ctk.CTk):
             font=ctk.CTkFont(family="Segoe UI", size=15, weight="bold"),
             height=52,
             corner_radius=14,
-            fg_color="#FF5C4D",
-            hover_color="#E84A3B",
+            fg_color="#1D4ED8",
+            hover_color="#1E40AF",
             text_color="#FFFFFF",
             command=self._start_validation_thread
         )
@@ -342,14 +400,165 @@ class AuditorComentariosApp(ctk.CTk):
             height=52,
             width=210,
             corner_radius=14,
-            fg_color="#2C2E3C",
-            hover_color="#3A3D4E",
+            fg_color="#1E2436",
+            hover_color="#2A324A",
             text_color="#FFFFFF",
             state="disabled",
             command=self._open_generated_file
         )
         self.open_excel_btn.grid(row=0, column=1)
 
+        return view
+
+    # =========================================================================
+    # VIEW 2: PLANILHAS & PASTAS
+    # =========================================================================
+    def _create_planilhas_view(self):
+        view = ctk.CTkScrollableFrame(
+            self.main_container, fg_color="transparent", scrollbar_button_color="#222636", scrollbar_button_hover_color="#33394E"
+        )
+        view.grid_columnconfigure(0, weight=1)
+
+        ctk.CTkLabel(
+            view,
+            text="Gestão de Planilhas e Diretórios de Saída",
+            font=ctk.CTkFont(family="Segoe UI", size=24, weight="bold"),
+            text_color="#FFFFFF"
+        ).grid(row=0, column=0, pady=(10, 18), sticky="w")
+
+        card = RaisedGlassCard(view, corner_radius=18, fg_color="#181A24", border_color="#282C3E")
+        card.grid(row=1, column=0, pady=10, sticky="ew")
+        card.grid_columnconfigure(0, weight=1)
+
+        ctk.CTkLabel(
+            card,
+            text="Detalhes dos Arquivos de Origem e Validado",
+            font=ctk.CTkFont(family="Segoe UI", size=16, weight="bold"),
+            text_color="#D8DBE8"
+        ).grid(row=0, column=0, padx=22, pady=(20, 12), sticky="w")
+
+        self.planilha_info_lbl = ctk.CTkLabel(
+            card,
+            text="Nenhum arquivo selecionado no momento.\nVá em 'Visão Geral' e selecione sua planilha de auditoria.",
+            font=ctk.CTkFont(family="Segoe UI", size=13),
+            text_color="#8E93B0",
+            justify="left"
+        )
+        self.planilha_info_lbl.grid(row=1, column=0, padx=22, pady=(0, 20), sticky="w")
+
+        # Botão para abrir pasta onde o arquivo está ou será salvo
+        btn_box = ctk.CTkFrame(card, fg_color="transparent")
+        btn_box.grid(row=2, column=0, padx=22, pady=(0, 20), sticky="w")
+
+        ctk.CTkButton(
+            btn_box,
+            text="📂 Abrir Pasta de Destino no Windows Explorer",
+            font=ctk.CTkFont(family="Segoe UI", size=13, weight="bold"),
+            height=44,
+            corner_radius=12,
+            fg_color="#1E3A8A",
+            hover_color="#1D4ED8",
+            command=self._open_target_folder
+        ).pack(side="left", padx=(0, 12))
+
+        return view
+
+    # =========================================================================
+    # VIEW 3: REGRAS & TOKENS OPERACIONAIS
+    # =========================================================================
+    def _create_regras_view(self):
+        view = ctk.CTkScrollableFrame(
+            self.main_container, fg_color="transparent", scrollbar_button_color="#222636", scrollbar_button_hover_color="#33394E"
+        )
+        view.grid_columnconfigure(0, weight=1)
+
+        ctk.CTkLabel(
+            view,
+            text="Manual Rápido de Regras e Tokens Operacionais",
+            font=ctk.CTkFont(family="Segoe UI", size=24, weight="bold"),
+            text_color="#FFFFFF"
+        ).grid(row=0, column=0, pady=(10, 18), sticky="w")
+
+        regras_text = """
+1. TOKENS PERMITIDOS EM QUALQUER NOTA:
+   • Tokens: S, SELO, ZELO, NR DI, NR RE, R, NR IM
+   • O robô não considera essas palavras como letras inválidas na checagem de CFP.
+   • Uso isolado (somente o token no texto): É classificado como Conforme (C) apenas nas notas puramente textuais (L131, T171, P191). Em notas de medidor/leitura, retorna Nota Incorreta (NI).
+
+2. PREFIXOS OPERACIONAIS EM MEDIDORES E POSTES:
+   • Letras prefixadas a numerações (ex: S202184113, s138628, MV08207, NF16588) fazem parte da nomenclatura oficial e são perfeitamente aceitas (C).
+   • Postes (E101, E111, P231): Aceitam os formatos M000000, S000000 (1 letra M ou S seguida de 6 dígitos) e X000.
+
+3. MÚLTIPLOS PARES DE CÓDIGO E LEITURA (MEDIDOR + LEITURA):
+   • As notas P111, B111, T181, R111 aceitam que um ou dois medidores sejam seguidos por múltiplos pares de código (até 3 dígitos) e leitura (até 6 dígitos).
+   • Exemplo válido: 3203600940 3 012051 24 001929 ou 6252237400 03 999999 103 999999.
+
+4. REGRA DO CÓDIGO 03 (T181 / R111 vs P111 / B111):
+   • Em T181 e R111: O código 03 isolado ou no início de comentário configura CFP. Mas leituras iniciadas com 03 após funções como 103 ou 55 são aceitas.
+   • Em P111, B111 e demais notas: O código ou leitura 03 é 100% aceito (C).
+
+5. MENÇÃO A OUTRAS NOTAS NO TEXTO:
+   • Comentários que mencionam códigos de notas ([A-Z] + 3 dígitos, ex: T111, T181, P111) têm o código da nota reconhecido e ignorado no filtro de letras prohibited.
+        """
+
+        card = RaisedGlassCard(view, corner_radius=18, fg_color="#181A24", border_color="#282C3E")
+        card.grid(row=1, column=0, pady=10, sticky="ew")
+        card.grid_columnconfigure(0, weight=1)
+
+        ctk.CTkLabel(
+            card,
+            text=regras_text.strip(),
+            font=ctk.CTkFont(family="Segoe UI", size=13),
+            text_color="#D8DBE8",
+            justify="left"
+        ).grid(row=0, column=0, padx=22, pady=20, sticky="w")
+
+        return view
+
+    # =========================================================================
+    # VIEW 4: HISTÓRICO DA AUDITORIA
+    # =========================================================================
+    def _create_historico_view(self):
+        view = ctk.CTkScrollableFrame(
+            self.main_container, fg_color="transparent", scrollbar_button_color="#222636", scrollbar_button_hover_color="#33394E"
+        )
+        view.grid_columnconfigure(0, weight=1)
+
+        ctk.CTkLabel(
+            view,
+            text="Histórico e Resumo de Performance da Sessão",
+            font=ctk.CTkFont(family="Segoe UI", size=24, weight="bold"),
+            text_color="#FFFFFF"
+        ).grid(row=0, column=0, pady=(10, 18), sticky="w")
+
+        card = RaisedGlassCard(view, corner_radius=18, fg_color="#181A24", border_color="#282C3E")
+        card.grid(row=1, column=0, pady=10, sticky="ew")
+        card.grid_columnconfigure(0, weight=1)
+
+        self.historico_txt_lbl = ctk.CTkLabel(
+            card,
+            text="Nenhuma execução realizada até o momento nesta sessão aberta do aplicativo.",
+            font=ctk.CTkFont(family="Segoe UI", size=14),
+            text_color="#8E93B0",
+            justify="left"
+        )
+        self.historico_txt_lbl.grid(row=0, column=0, padx=22, pady=24, sticky="w")
+
+        return view
+
+    def _update_historico_view(self):
+        if self.last_total_rows > 0:
+            msg = (
+                f"🕒 Última Execução Realizada em: {self.last_run_time}\n\n"
+                f"📊 Total de Linhas Analisadas: {self.last_total_rows:,} comentários\n"
+                f"⚡ Tempo Total de Processamento: {self.last_elapsed_secs} segundos\n"
+                f"📁 Planilha de Saída Gravada: {self.output_file_path.get()}"
+            )
+            self.historico_txt_lbl.configure(text=msg, text_color="#D8DBE8")
+
+    # =========================================================================
+    # AÇÕES DO SISTEMA E PROCESSAMENTO EM THREAD
+    # =========================================================================
     def _select_file(self):
         if self.is_processing:
             return
@@ -368,7 +577,25 @@ class AuditorComentariosApp(ctk.CTk):
             out_path = os.path.join(base_dir, f"{file_name}_VALIDADO.xlsx")
             self.output_file_path.set(out_path)
             self.status_lbl.configure(text=f"Planilha selecionada: {os.path.basename(file_path)}", text_color="#2ECC71")
-            self.progress_detail_lbl.configure(text=f"Destino: {out_path}")
+            self.progress_detail_lbl.configure(text=f"Destino de saída: {out_path}")
+            
+            # Atualizar view da aba planilhas
+            info_text = (
+                f"📄 Arquivo Origem:\n{file_path}\n\n"
+                f"📑 Aba Excel Selecionada:\n{self.sheet_name_var.get()}\n\n"
+                f"💾 Arquivo Validado a Gerar:\n{out_path}"
+            )
+            if hasattr(self, 'planilha_info_lbl'):
+                self.planilha_info_lbl.configure(text=info_text, text_color="#D8DBE8")
+
+    def _open_target_folder(self):
+        file_path = self.selected_file_path.get()
+        if file_path and os.path.exists(file_path):
+            folder = os.path.dirname(file_path)
+            os.startfile(folder)
+        else:
+            folder = os.path.abspath(".")
+            os.startfile(folder)
 
     def _start_validation_thread(self):
         if self.is_processing:
@@ -379,11 +606,11 @@ class AuditorComentariosApp(ctk.CTk):
             return
 
         self.is_processing = True
-        self.action_btn.configure(state="disabled", text="⏳ Processando Regras de Negócio...")
+        self.action_btn.configure(state="disabled", text="⏳ Processando Regras Operacionais...")
         self.open_excel_btn.configure(state="disabled")
         self.progress_bar.set(0.1)
-        self.status_lbl.configure(text="Carregando planilha e normalizando colunas...", text_color="#FF5C4D")
-        self.progress_detail_lbl.configure(text="Lendo estrutura de dados na memória...")
+        self.status_lbl.configure(text="Carregando planilha e normalizando colunas...", text_color="#3B82F6")
+        self.progress_detail_lbl.configure(text="Lendo estrutura de dados na memória do sistema...")
 
         threading.Thread(target=self._run_validation_pipeline, args=(file_path,), daemon=True).start()
 
@@ -434,12 +661,15 @@ class AuditorComentariosApp(ctk.CTk):
                 else:
                     df['ANÁLISE'] = None
 
-            try:
-                from src.validation_rules import aplicar_validacao
-                df = aplicar_validacao(df, coluna_comentario='Coment_leitura', coluna_nota='Nota_leit', coluna_analise='ANÁLISE')
-            except Exception:
-                from validation_rules import applying_validation as aplicar_validacao_alt
-                df = aplicar_validacao_alt(df, coluna_comentario='Coment_leitura', coluna_nota='Nota_leit', coluna_analise='ANÁLISE')
+            # Aplicar validação por regras de forma resiliente
+            func_val = aplicar_validacao_func
+            if func_val is None:
+                try:
+                    from src.validation_rules import aplicar_validacao as func_val
+                except ImportError:
+                    from validation_rules import aplicar_validacao as func_val
+
+            df = func_val(df, coluna_comentario='Coment_leitura', coluna_nota='Nota_leit', coluna_analise='ANÁLISE')
 
             self.progress_bar.set(0.75)
             self.status_lbl.configure(text="Gravando planilha Excel validada na mesma pasta...")
@@ -457,6 +687,11 @@ class AuditorComentariosApp(ctk.CTk):
             for key in self.badges:
                 val = dist.get(key, 0)
                 self.badges[key].update_value(f"{val:,}".replace(',', '.'))
+
+            # Salvar estatísticas no histórico
+            self.last_run_time = time.strftime("%d/%m/%Y às %H:%M:%S")
+            self.last_total_rows = len(df)
+            self.last_elapsed_secs = elapsed
 
             self.after(10, self._on_validation_success)
 
