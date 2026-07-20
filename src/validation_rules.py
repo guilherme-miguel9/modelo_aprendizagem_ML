@@ -149,7 +149,7 @@ class CommentValidator:
         return "C"
     
     def _validar_medidor_leitura(self, comentario: str) -> str:
-        """Valida formato: MEDIDOR + LEITURA (dois valores numéricos ou 103/55 + até 6 dígitos)"""
+        """Valida formato: MEDIDOR + LEITURA (aceita medidores, códigos de até 3 dígitos e leituras de até 6 dígitos)"""
         numeros = re.findall(r'\d+', comentario)
         if len(numeros) == 0:
             return "NI"  # Não tem números, comentário não faz sentido com a nota solicitada
@@ -163,13 +163,8 @@ class CommentValidator:
                 return "C"
             return "FL"  # Falta leitura
             
-        tem_prefixo = any(re.match(r'^(103|55|03|3)\d{0,6}$', num) or num in ['03', '3'] for num in numeros)
-        limite_numeros = 3 if tem_prefixo else 2
-        prefixos_encontrados = sum(1 for num in numeros if re.match(r'^(103|55|03|3)\d{0,6}$', num) or num in ['03', '3'])
-        if prefixos_encontrados >= 2:
-            limite_numeros = 4
-        
-        if len(numeros) > limite_numeros:
+        # Aceita múltiplos pares de códigos e leituras (de 2 até 8 números)
+        if len(numeros) > 8:
             return "CFP"
             
         return "C"
@@ -210,7 +205,7 @@ class CommentValidator:
         return "C"
     
     def _validar_medidor_sem_leitura(self, comentario: str) -> str:
-        """Valida: UM OU DOIS MEDIDORES (SEM LEITURA), aceitando medidores com letras em suas variações (ex: MV08207)"""
+        """Valida: UM OU DOIS MEDIDORES (SEM LEITURA), aceitando medidores com letras em suas variações e múltiplos códigos/leituras (ex: MV08207)"""
         if not re.search(r'\d', comentario):
             return "NI"
             
@@ -221,13 +216,8 @@ class CommentValidator:
                 return "CFP"
                 
         itens = [p for p in palavras if any(c.isdigit() for c in p)]
-        tem_prefixo = any(re.match(r'^(103|55|03|3)\d{0,6}$', item) or item in ['03', '3'] for item in itens)
-        limite = 3 if tem_prefixo else 2
-        prefixos_encontrados = sum(1 for item in itens if re.match(r'^(103|55|03|3)\d{0,6}$', item) or item in ['03', '3'])
-        if prefixos_encontrados >= 2:
-            limite = 4
         
-        if len(itens) > limite:
+        if len(itens) > 8:
             return "CFP"
             
         return "C"
@@ -254,13 +244,7 @@ class CommentValidator:
                 return "CI"
             return "FL"
             
-        tem_prefixo = any(re.match(r'^(103|55|03|3)\d{0,6}$', num) or num in ['03', '3'] for num in numeros)
-        limite_numeros = 3 if tem_prefixo else 2
-        prefixos_encontrados = sum(1 for num in numeros if re.match(r'^(103|55|03|3)\d{0,6}$', num) or num in ['03', '3'])
-        if prefixos_encontrados >= 2:
-            limite_numeros = 4
-        
-        if len(numeros) > limite_numeros:
+        if len(numeros) > 8:
             return "CFP"
             
         return "C"
@@ -324,7 +308,13 @@ if __name__ == "__main__":
         ("T181", "103 03221", "C"), # Leitura iniciada com 03 no T181 -> C
         ("T181", "55 034429", "C"), # Leitura iniciada com 03 no T181 (função 55) -> C
         ("R111", "MV08207 3181313071", "C"), # Medidor alfanumérico no R111 -> C
-        ("P111", "5260328370 03 00000", "C") # Leitura 03 no P111 -> C
+        ("P111", "5260328370 03 00000", "C"), # Leitura 03 no P111 -> C
+        ("P111", "3203600940 3 012051 24 001929", "C"), # Medidor + múltiplos códigos/leituras -> C
+        ("P111", "3242491466 03 114 24 53", "C"), # Medidor + múltiplos códigos/leituras -> C
+        ("P111", "6252237400 03 999999 103 999999", "C"), # Medidor + múltiplos códigos/leituras -> C
+        ("P111", "5257431454 03 140 103 0", "C"), # Medidor + múltiplos códigos/leituras -> C
+        ("R111", "3010214262 3243797216 103 22851", "C"), # Dois medidores + código/leitura no R111 -> C
+        ("P111", "6252079651 03 3 103 0", "C") # Medidor + múltiplos códigos/leituras -> C
     ]
     
     print("Testes de validacao:")

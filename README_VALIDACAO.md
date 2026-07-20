@@ -52,7 +52,7 @@ O sistema classifica os comentários em 8 categorias:
 - **P131** - E.M. Vizinho Não Cadastrado
 - **T171** - Data/Hora do E.M. Incorreta (exige funções `01` ou `02` no comentário)
 
-**Regra:** Exigem 2 números (ou até 3 a 4 quando há códigos como `03`, `103` ou `55`). Comentários puramente textuais retornam `NI`.
+**Regra:** Exigem 2 ou mais números, permitindo que um ou dois medidores sejam seguidos por múltiplos pares de códigos (de até 3 dígitos) e leituras (de até 6 dígitos), ex: `3203600940 3 012051 24 001929` ou `6252237400 03 999999 103 999999`. Comentários puramente textuais retornam `NI`.
 
 ### Notas que requerem Nº DO POSTE (M000000 ou X000)
 - **E101** - Poste Inclinado ou Quebrado
