@@ -44,18 +44,14 @@ class CommentValidator:
     """Validador de comentários baseado em regras de negócio"""
     
     def __init__(self):
-        self.caracteres_especiais = set("*.;_-#")
+        # Tokens e abreviações permitidas que podem aparecer nos comentários
+        self.tokens_permitidos = ['NR DI', 'NR RE', 'NR IM', 'SELO', 'ZELO', 'S', 'R']
+        # Notas onde o comentário não é obrigatório ou o token pode vir sozinho
+        self.notas_sem_comentario = ["T161", "L131", "P191", "T171", "L121"]
     
     def validar_comentario(self, nota: str, comentario: str) -> Optional[str]:
         """
         Valida um comentário baseado na nota de leitura.
-        
-        Args:
-            nota: Código da nota de leitura (ex: "B111")
-            comentario: Conteúdo do comentário de leitura
-            
-        Returns:
-            Código da análise (C, SC, UCE, EE, FL, CFP, CI, NI) ou None se não analisado
         """
         if nota == "L121":
             return None
@@ -65,45 +61,62 @@ class CommentValidator:
         
         comentario = str(comentario).strip()
         
-        # Verificar caracteres especiais
+        # Verificar caracteres especiais (pegar todos os caracteres especiais de todos os comentários)
         if self._tem_caracteres_especiais(comentario):
             return "UCE"
         
-        # Verificar excesso de espaços
+        # Verificar excesso de espaços (3 ou mais)
         if self._tem_excesso_espacos(comentario):
             return "EE"
+            
+        # Verificar se as notas T181 ou R111 possuem 03 (+ até 6 dígitos), configurando CFP
+        if nota in ["T181", "R111"]:
+            if re.search(r'\b03\d{0,6}\b', comentario):
+                return "CFP"
+                
+        # Verificar se o comentário possui apenas os tokens permitidos (S | SELO | ZELO | NR DI | NR RE | R | NR IM)
+        if self._e_apenas_token_permitido(comentario):
+            if nota in self.notas_sem_comentario:
+                return "C"
+            # Se não for de nota sem comentário (ou seja, notas que exigem comentário), não pode vir só:
+            # Continua para a validação específica da nota abaixo para verificar falta de dados
         
         # Obter regra para a nota
         regra = VALIDATION_RULES.get(nota)
         if not regra:
-            # Se não há regra definida, assume conforme
             return "C"
         
         # Validar baseado no tipo de conteúdo requerido
-        resultado = self._validar_conteudo_requerido(nota, comentario, regra)
-        return resultado
+        return self._validar_conteudo_requerido(nota, comentario, regra)
     
     def _validar_comentario_vazio(self, nota: str) -> str:
         """Valida quando o comentário está vazio"""
-        # Notas que NÃO exigem comentário (baseado nos dados corretos)
-        notas_sem_comentario = ["T161", "L131", "P191", "T171"]  # Campanhas, apenas função, P191 e T171
-        
-        if nota in notas_sem_comentario:
+        if nota in self.notas_sem_comentario:
             return "C"
-        
-        # Todas as outras notas exigem comentário
         return "SC"
     
     def _tem_caracteres_especiais(self, comentario: str) -> bool:
         """Verifica se o comentário contém caracteres especiais"""
-        # Caracteres especiais baseado nos dados corretos: . ' _ ,
-        caracteres_especiais = {'.', "'", '_', ','}
-        return any(char in caracteres_especiais for char in comentario)
+        # UCE: pegar todos os caracteres especiais de todos os comentários (*, ., ;, _, -, #, /, @, !, ?, etc.)
+        return bool(re.search(r'[^\w\s]', comentario, re.UNICODE))
     
     def _tem_excesso_espacos(self, comentario: str) -> bool:
-        """Verifica se há excesso de espaços (mais de 2 consecutivos)"""
-        # Verificar se há 3 ou mais espaços consecutivos
+        """Verifica se há excesso de espaços (3 ou mais consecutivos)"""
         return '   ' in comentario
+        
+    def _e_apenas_token_permitido(self, comentario: str) -> bool:
+        """Verifica se o comentário é apenas composto pelos tokens permitidos (sem números ou outros textos)"""
+        temp = comentario.upper()
+        for token in sorted(self.tokens_permitidos, key=len, reverse=True):
+            temp = re.sub(r'\b' + token + r'\b', '', temp)
+        return temp.strip() == ""
+        
+    def _contem_letras_nao_permitidas(self, comentario: str) -> bool:
+        """Verifica se há letras no comentário ignorando os tokens permitidos (S, SELO, ZELO, NR DI, NR RE, R, NR IM)"""
+        temp = comentario.upper()
+        for token in sorted(self.tokens_permitidos, key=len, reverse=True):
+            temp = re.sub(r'\b' + token + r'\b', '', temp)
+        return bool(re.search(r'[A-ZÁ-Ú]', temp))
     
     def _validar_conteudo_requerido(self, nota: str, comentario: str, regra: Dict) -> str:
         """Valida se o conteúdo do comentário está conforme o requerido"""
@@ -136,126 +149,117 @@ class CommentValidator:
         return "C"
     
     def _validar_medidor_leitura(self, comentario: str) -> str:
-        """Valida formato: MEDIDOR + LEITURA (dois valores numéricos)"""
-        # Extrair números do comentário
+        """Valida formato: MEDIDOR + LEITURA (dois valores numéricos ou 103/55 + até 6 dígitos)"""
         numeros = re.findall(r'\d+', comentario)
-        
-        # Para P111, precisa de 2 números (medidor + leitura) para ser C
-        # Baseado nos dados corretos: P111 com apenas medidor é FL
-        if len(numeros) < 2:
-            return "FL"
-        
-        # Se tem mais de 2 números ou contém letras
-        if len(numeros) > 2 or re.search(r'[a-zA-Z]', comentario):
+        if len(numeros) == 0:
+            return "NI"  # Não tem números, comentário não faz sentido com a nota solicitada
+            
+        if self._contem_letras_nao_permitidas(comentario):
             return "CFP"
+            
+        # Se tem apenas 1 número, verificar se é o padrão junto 103/55 + até 6 dígitos
+        if len(numeros) == 1:
+            if re.match(r'^(103|55)\d{1,6}$', numeros[0]):
+                return "C"
+            return "FL"  # Falta leitura
+            
+        tem_prefixo = any(re.match(r'^(103|55)\d{0,6}$', num) for num in numeros)
+        limite_numeros = 3 if tem_prefixo else 2
         
+        if len(numeros) > limite_numeros:
+            return "CFP"
+            
         return "C"
     
     def _validar_medidor_leitura_funcao(self, comentario: str, funcoes_validas: list) -> str:
         """Valida formato: MEDIDOR + LEITURA (apenas para funções 01 e 02)"""
-        # Verificar se contém função válida
         tem_funcao_valida = any(func in comentario for func in funcoes_validas)
-        
         if not tem_funcao_valida:
-            return "NI"  # Nota incorreta
-        
+            return "NI"
         return self._validar_medidor_leitura(comentario)
     
     def _validar_formato_poste(self, comentario: str) -> str:
         """Valida formato: M000000 (1 letra M e 6 números) ou X seguido de número"""
-        # Procurar padrão M seguido de 6 dígitos
+        if not re.search(r'\d', comentario):
+            return "NI"
+            
+        if self._contem_letras_nao_permitidas(comentario):
+            coment_sem_poste = re.sub(r'[MX]\d+', '', comentario, flags=re.IGNORECASE)
+            if self._contem_letras_nao_permitidas(coment_sem_poste):
+                return "CFP"
+                
         padrao_m = r'M\d{6}'
         padrao_x = r'X\d+'
         
-        if re.search(padrao_m, comentario, re.IGNORECASE):
+        if re.search(padrao_m, comentario, re.IGNORECASE) or re.search(padrao_x, comentario, re.IGNORECASE):
             return "C"
-        
-        if re.search(padrao_x, comentario, re.IGNORECASE):
-            return "C"
-        
-        return "CI"  # Comentário incorreto
+            
+        return "CI"
     
     def _validar_texto_condizente(self, comentario: str) -> str:
         """Valida se o texto é condizente com a nota (texto descritivo)"""
-        # Para notas de texto (C111, C121, C131, etc.), aceitar qualquer texto razoável
-        # Baseado nos dados corretos: C131 aceita números como "88", "75"
-        
         if len(comentario) < 1:
             return "CI"
-        
         return "C"
     
     def _validar_campanha(self, comentario: str, nota: str) -> str:
         """Valida informações de campanha"""
-        # L131 e L121 aceitam comentários vazios, simples como "s", números de telefone, textos informativos
-        # Baseado nos dados reais, esses são considerados CONFORME
-        if nota in ["L131", "L121"]:
-            return "C"
-        
         return "C"
     
     def _validar_medidor_sem_leitura(self, comentario: str) -> str:
         """Valida: UM OU DOIS MEDIDORES (SEM LEITURA)"""
-        # Para R111, aceitar qualquer comentário com números
-        # Baseado nos dados corretos: R111 com muitos números ainda é C
         numeros = re.findall(r'\d+', comentario)
-        
         if len(numeros) == 0:
-            return "CI"
-        
-        # Se tem mais de 2 números ou contém letras
-        if len(numeros) > 2 or re.search(r'[a-zA-Z]', comentario):
+            return "NI"
+            
+        if self._contem_letras_nao_permitidas(comentario):
             return "CFP"
+            
+        tem_prefixo = any(re.match(r'^(103|55)\d{0,6}$', num) for num in numeros)
+        limite_numeros = 3 if tem_prefixo else 2
         
+        if len(numeros) > limite_numeros:
+            return "CFP"
+            
         return "C"
     
     def _validar_apenas_funcao(self, comentario: str) -> str:
         """Valida: APENAS FUNÇÃO"""
-        # Verificar se contém apenas código de função (2 dígitos)
         if re.match(r'^\d{2}$', comentario.strip()):
             return "C"
-        
-        # Se tiver mais conteúdo, pode estar fora do padrão
         return "CFP"
     
     def _validar_funcao_leitura(self, comentario: str, funcao_invalida: str) -> str:
-        """Valida: FUNÇÃO + LEITURA (função 03 não pode estar no comentário)"""
-        # Para T181, precisa ter função + leitura (2 números)
-        # Padrões corretos: "103 15040", "10310745"
-        # Padrões incorretos: "103" (FL), "1031619" (CI - sem espaço), "t18" (CI)
-        
-        # Verificar se é texto sem números (NI)
-        if not re.search(r'\d', comentario):
-            return "NI"
-        
+        """Valida: FUNÇÃO + LEITURA (função 03 já validada acima em T181)"""
         numeros = re.findall(r'\d+', comentario)
-        
-        if len(numeros) < 2:
-            # Se tem apenas 1 número e é muito curto, pode ser CI
-            if len(numeros) == 1 and len(numeros[0]) <= 4:
-                return "CI"
-            return "FL"  # Falta leitura
-        
-        # Se tem mais de 2 números ou contém letras
-        if len(numeros) > 2 or re.search(r'[a-zA-Z]', comentario):
+        if len(numeros) == 0:
+            return "NI"
+            
+        if self._contem_letras_nao_permitidas(comentario):
             return "CFP"
+            
+        if len(numeros) == 1:
+            if re.match(r'^(103|55)\d{1,6}$', numeros[0]):
+                return "C"
+            if len(numeros[0]) <= 4 and not re.match(r'^(103|55)', numeros[0]):
+                return "CI"
+            return "FL"
+            
+        tem_prefixo = any(re.match(r'^(103|55)\d{0,6}$', num) for num in numeros)
+        limite_numeros = 3 if tem_prefixo else 2
         
+        if len(numeros) > limite_numeros:
+            return "CFP"
+            
         return "C"
 
 
 def aplicar_validacao(df: pd.DataFrame) -> pd.DataFrame:
     """
     Aplica validação em um DataFrame inteiro.
-    
-    Args:
-        df: DataFrame com colunas de nota e comentário
-        
-    Returns:
-        DataFrame com coluna 'ANÁLISE' preenchida
     """
     validator = CommentValidator()
     
-    # Encontrar as colunas corretas (nomes podem variar após normalização)
     nota_col = None
     coment_col = None
     
@@ -273,7 +277,6 @@ def aplicar_validacao(df: pd.DataFrame) -> pd.DataFrame:
         nota = str(row.get(nota_col, '')).strip()
         comentario = row.get(coment_col, '')
         
-        # Se já tem análise, manter
         if pd.notna(row.get('ANÁLISE')):
             resultados.append(row['ANÁLISE'])
         else:
@@ -286,10 +289,8 @@ def aplicar_validacao(df: pd.DataFrame) -> pd.DataFrame:
 
 
 if __name__ == "__main__":
-    # Teste de exemplo
     validator = CommentValidator()
     
-    # Testes
     test_cases = [
         ("B111", "12345 67890", "C"),  # Medidor + leitura correto
         ("B111", "", "SC"),  # Sem comentário
@@ -300,6 +301,14 @@ if __name__ == "__main__":
         ("C111", "ABC", "C"),  # Texto muito curto
         ("T161", "01", "C"),  # Apenas função
         ("T161", "01 123", "CFP"),  # Fora do padrão
+        ("T181", "03 12345", "CFP"), # T181 com 03 -> CFP
+        ("R111", "0312345", "CFP"),  # R111 com 03 + dígitos -> CFP
+        ("B111", "103123456", "C"),  # 103 + até 6 dígitos em B111 -> C
+        ("P111", "12345 6789 SELO", "C"), # Token permitido junto com leitura -> C
+        ("L131", "SELO", "C"), # Token permitido sozinho em nota sem comentário obrigatório -> C
+        ("P111", "SELO", "NI"), # Token permitido sozinho em nota com comentário obrigatório -> NI
+        ("T181", "103 15040.", "UCE"), # Caractere especial -> UCE
+        ("P111", "cliente nao estava", "NI") # Comentário não faz sentido com a nota -> NI
     ]
     
     print("Testes de validacao:")
@@ -307,3 +316,4 @@ if __name__ == "__main__":
         resultado = validator.validar_comentario(nota, comentario)
         status = "[OK]" if resultado == esperado else "[FAIL]"
         print(f"{status} Nota: {nota}, Comentario: '{comentario}' -> {resultado} (esperado: {esperado})")
+
