@@ -255,23 +255,25 @@ class CommentValidator:
         return "C"
 
 
-def aplicar_validacao(df: pd.DataFrame) -> pd.DataFrame:
+def aplicar_validacao(df: pd.DataFrame, coluna_comentario: Optional[str] = None, coluna_nota: Optional[str] = None, coluna_analise: Optional[str] = None) -> pd.DataFrame:
     """
     Aplica validação em um DataFrame inteiro.
     """
     validator = CommentValidator()
     
-    nota_col = None
-    coment_col = None
+    nota_col = coluna_nota
+    coment_col = coluna_comentario
     
-    for col in df.columns:
-        if 'nota' in col.lower() and 'leit' in col.lower():
-            nota_col = col
-        if 'coment' in col.lower():
-            coment_col = col
+    if nota_col is None or coment_col is None or nota_col not in df.columns or coment_col not in df.columns:
+        for col in df.columns:
+            if 'nota' in col.lower() and 'leit' in col.lower():
+                nota_col = col
+            if 'coment' in col.lower():
+                coment_col = col
     
     if nota_col is None or coment_col is None:
         raise ValueError(f"Colunas não encontradas. nota_col={nota_col}, coment_col={coment_col}. Colunas disponíveis: {df.columns.tolist()}")
+
     
     resultados = []
     for _, row in df.iterrows():
