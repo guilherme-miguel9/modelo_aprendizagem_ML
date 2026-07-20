@@ -1,98 +1,103 @@
-# SmartRead ML & Routing — Auditoria de Leituras e Otimização de Rotas
+# Auditor de Comentários PDA — Sistema de Validação Operacional
 
-Este projeto é uma solução inteligente integrada para distribuidoras de utilidades (água, gás, energia), dividida em dois grandes pilares:
-1. **Auditoria de Comentários de Leitura**: Sistema híbrido (Regras de Negócio + Modelos de ML) para validar se as justificativas escritas pelos leituristas nos coletores de dados estão em conformidade com as regras operacionais.
-2. **Otimização de Rotas (API de Roteamento)**: API desenvolvida em FastAPI que soluciona o problema do caixeiro-viajante (TSP) para otimizar as rotas diárias dos leituristas, gerando mapas interativos do trajeto ideal.
+O **Auditor de Comentários PDA** é uma solução inteligente e automatizada para validação e auditoria operacional de justificativas registradas por leituristas em coletores de dados (PDA). O sistema analisa instantaneamente dezenas de milhares de registros, aplicando regras operacionais de negócio de alta precisão para identificar não conformidades, erros de digitação e desvios de processo no campo.
 
 ---
 
-## 🚀 Funcionalidades
+## 🚀 Funcionalidades e Classificações de Auditoria
 
-### 1. Auditoria e Validação de Comentários
-Substitui ou complementa análises manuais demoradas através de um motor de validação baseado em regras e inteligência artificial que categoriza os comentários operacionais em:
-* **C (Conforme)**: O comentário atende exatamente aos critérios exigidos pela nota de leitura.
-* **SC (Sem Comentário)**: A nota exige justificativa, mas o campo foi enviado em branco.
-* **UCE (Uso de Caractere Especial)**: Identifica caracteres especiais não permitidos (ex: `*`, `.`, `;`, `_`, `-`, `#`).
-* **EE (Excesso de Espaço)**: Identifica espaçamentos incorretos (3 ou mais espaços consecutivos, ex: `'   '`).
-* **FL (Falta a Leitura)**: Notas que necessitam de leitura operacional, mas esta não foi informada.
-* **CFP (Comentário Fora do Padrão)**: Informações extras desnecessárias (como mais de 2 números no texto ou presença de letras em campos puramente numéricos).
-* **CI (Comentário Incorreto)**: Conteúdo incompatível com a nota gerada.
-* **NI (Nota Incorreta)**: A descrição do texto corresponde ao preenchimento de uma nota diferente.
-* *Nota L121:* O robô ignora esta nota de campanha de forma inteligente, preservando análises manuais anteriores e deixando células vazias para auditoria manual.
+O motor de validação processa cada linha da planilha de auditoria (Excel ou CSV) e categoriza o comentário na coluna **`ANÁLISE`** em uma das 8 classificações operacionais:
 
-### 2. Otimização de Rotas (FastAPI + TSP)
-API que recebe uma lista de coordenadas geográficas e gera a rota de menor distância/tempo:
-* **Algoritmo TSP**: Resolve o problema de otimização de rotas geográficas utilizando matrizes de distância Haversine e associação linear.
-* **Visualização no Mapa**: Gera dinamicamente um arquivo HTML interativo com o mapa das rotas utilizando a biblioteca **Folium**.
-* **Previsão de Tempo**: Estima tempo de tráfego com base em parâmetros de velocidade média configuráveis.
+| Sigla | Classificação | Critério e Descrição |
+| :---: | :--- | :--- |
+| **C** | **CONFORME** | O comentário atende plenamente aos critérios numéricos e textuais exigidos pela nota de leitura. |
+| **SC** | **SEM COMENTÁRIO** | A nota exige justificativa/informação obrigatória, mas o comentário foi deixado em branco. |
+| **UCE** | **USO DE CARACTERE ESPECIAL** | O comentário contém caracteres especiais proibidos (`*`, `.`, `;`, `_`, `-`, `#`, `/`, `@`, etc.). |
+| **EE** | **EXCESSO DE ESPAÇO** | O comentário apresenta 3 ou mais espaços consecutivos no texto (ex: `'   '`). |
+| **FL** | **FALTA A LEITURA** | A nota exige leitura operacional junto ao medidor ou função, mas apenas 1 número foi informado. |
+| **CFP** | **COMENTÁRIO FORA DO PADRÃO** | Presença de letras não permitidas em notas numéricas, excesso de dados ou uso indevido de `03` no início de `T181`/`R111`. |
+| **CI** | **COMENTÁRIO INCORRETO** | O formato informado não atende ao exigido pela nota (ex: numeração de poste fora do padrão `M000000`/`S000000`/`X000`). |
+| **NI** | **NOTA INCORRETA** | O comentário não condiz com a nota gerada no coletor (ex: texto explicativo sem números em notas de medidor/leitura). |
+
+> *Nota `L121` (Campanha 1):* O robô ignora automaticamente todas as linhas sob a nota `L121`, preservando integralmente qualquer auditoria prévia nas células originais da planilha.
 
 ---
 
-## 📁 Estrutura do Projeto
+## ⚡ Diferenciais Técnicos e Regras Avançadas
 
-```
-modelo_aprendizagem_ML/
-├── data/
-│   ├── raw/             # Planilhas/CSVs brutos de leitura
-│   ├── processed/       # Bases pré-processadas para treino do modelo
-│   └── new/             # Arquivos novos para predição/validação
-├── models/
-│   ├── api_route.py           # Endpoint FastAPI para otimização de rotas
-│   ├── gerar_mapa.py          # Script gerador de mapas interativos Folium
-│   ├── modelo_teste3.py       # Modelo RandomForest otimizado (scikit-learn)
-│   ├── modelo_teste_neural.py # Rede Neural de classificação (TensorFlow/Keras)
-│   └── rota_mapa.html         # Mapa gerado com a rota otimizada
-├── src/
-│   ├── validation_rules.py    # Motor de regras de negócio de validação
-│   └── validar_comentarios.py # Script principal de validação de dados
-├── requirements.txt           # Dependências do projeto
-├── README.md                  # Este arquivo explicativo
-└── melhor_modelo_texto.keras  # Modelo de rede neural treinado
-```
+* **Múltiplos Pares de Códigos e Leituras:** As notas de medidor/leitura (`P111`, `B111`, `T181`, `R111`, etc.) aceitam que 1 ou 2 medidores sejam acompanhados por múltiplos pares compostos pelo código/função de ocorrência (até 3 dígitos) e a respectiva leitura (até 6 dígitos), ex: `3203600940 3 012051 24 001929` ou `6252237400 03 999999 103 999999`.
+* **Prefixos `S`, `M`, `X`, `MV`, `NF` em Medidores e Postes:** Letras prefixadas a numerações operacionais fazem parte da nomenclatura oficial e são perfeitamente aceitas sem disparar erros de padrão (`CFP`). Postes em notas como `E101` aceitam tanto os formatos `M` e `X` quanto o formato **`S + 6 dígitos`** (ex: `s138628`).
+* **Reconhecimento de Menção a Outras Notas:** Quando o técnico referencia outra nota operacional dentro do comentário (código no formato `[A-Z] + 3 dígitos`, como `T111`, `T181`, `P111`), o sistema reconhece o código da nota e não o penaliza como letra proibida.
+* **Tokens Operacionais (`S`, `SELO`, `ZELO`, `NR DI`, `NR RE`, `R`, `NR IM`):** Permitidos em qualquer nota sem gerar `CFP`. Podem aparecer isolados apenas em notas puramente textuais (`L131`, `T171`, `P191`).
+* **Prefixos e Funções Específicas:** Códigos como `103` e `55` (+ até 6 dígitos) são aceitos em todas as notas. A leitura `03` é aceita em `P111`, `B111` e demais notas, sendo restrita como código inicial isolado apenas em `T181` e `R111`.
 
 ---
 
-## 🛠️ Tecnologias Utilizadas
+## 🖥️ Painel Desktop (GUI com Modo Escuro & Raised Glass)
 
-* **Processamento de Dados**: `Pandas`, `Polars`, `Numpy`
-* **Machine Learning**: `Scikit-Learn`, `TensorFlow/Keras`
-* **API & Otimização**: `FastAPI`, `SciPy` (associação linear), `Folium` (mapas interativos)
-* **Linguagem**: `Python 3.11+`
+O projeto conta com uma interface gráfica desktop interativa e moderna (`main.py`), construída com **CustomTkinter**, apresentando um layout estilo *Space-Grey & Coral Glow* (cards elevados, navegação em barra lateral e indicadores instantâneos de status).
+
+### Principais recursos da interface:
+1. **Seleção Simplificada:** Suporte nativo a arquivos Excel (`.xlsx`, `.xlsm` com macros, `.xls`) e `.csv`.
+2. **Processamento em Thread Dedicada:** Execução de auditorias complexas sobre mais de 100 mil linhas no fundo sem travar a interface visual.
+3. **Barra de Progresso e Métricas ao Vivo:** Exibição imediata da distribuição de todos os indicadores com *badges* coloridos e tempo de execução.
+4. **Gravação Automática:** Salva a planilha validada (`_VALIDADO.xlsx`) na mesma pasta do arquivo de origem.
+5. **Abertura em 1 Clique:** Botão para abrir o arquivo Excel validado imediatamente após a conclusão.
 
 ---
 
-## 🔧 Como Instalar e Rodar
+## 📦 Executável Standalone (`.exe`)
 
-### Pré-requisitos
-* Python 3.11 instalado.
+Para utilizar o sistema em computadores Windows **sem necessidade de instalar Python** ou qualquer biblioteca, o projeto compila todas as dependências em um único arquivo executável portátil via PyInstaller.
 
-### Instalação
-1. Clone o repositório no seu workspace local.
-2. Crie e ative um ambiente virtual:
-   ```bash
-   python -m venv .venv
-   .venv\Scripts\activate   # Windows
-   source .venv/bin/activate # Linux/Mac
-   ```
-3. Instale as dependências:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-### Executar a Validação de Comentários (Robô)
-O script de validação lê as tabelas e exporta os dados auditados para Excel:
-* **Execução básica** (utiliza o arquivo de exemplo padrão em `data/new/`):
-  ```bash
-  python src/validar_comentarios.py
-  ```
-* **Executar com arquivos customizados**:
-  ```bash
-  python src/validar_comentarios.py --input seu_arquivo.csv --output saida.xlsx
-  ```
-
-### Executar a API de Roteamento
-Para iniciar o servidor FastAPI localmente:
+O arquivo executável pronto e compilado fica disponível na pasta `dist/`:
 ```bash
-uvicorn models.api_route:app --reload
+dist/Validador_Comentarios_PDA.exe
 ```
-Acesse a documentação interativa da API em: `http://localhost:8000/docs`
+
+---
+
+## 🛠️ Estrutura do Projeto
+
+```
+auditor-de-comentarios/
+├── main.py                  # Painel Desktop Interativo (CustomTkinter GUI)
+├── app_icon.ico             # Ícone do aplicativo para compilação Windows
+├── requirements.txt         # Dependências Python do projeto
+├── README.md                # Documentação do sistema
+├── README_VALIDACAO.md      # Manual detalhado e especificações técnicas de todas as notas
+├── walkthrough.md           # Histórico de execuções e métricas validadas
+├── src/
+│   ├── validation_rules.py    # Motor com todas as regras operacionais de negócio e testes unitários
+│   └── validar_comentarios.py # Script CLI principal para auditoria em lote e manipulação de DataFrames
+└── dist/
+    └── Validador_Comentarios_PDA.exe  # Aplicativo executável autônomo compilado
+```
+
+---
+
+## 💻 Como Executar via Código Python
+
+### 1. Requisitos
+Certifique-se de ter o Python 3.10+ instalado e instale as dependências:
+```bash
+pip install -r requirements.txt
+```
+
+### 2. Executar o Painel Desktop GUI
+```bash
+python main.py
+```
+
+### 3. Executar via Linha de Comando (CLI)
+Para executar a auditoria diretamente pelo terminal sem abrir a interface gráfica:
+```bash
+python src/validar_comentarios.py --input "caminho/para/planilha.xlsm" --output "caminho/para/saida_VALIDADA.xlsx" --sheet "Aud_Coment_Geral" --analyze
+```
+
+### 4. Compilar novo Executável (`.exe`)
+Para gerar um novo arquivo `.exe` após realizar alterações nas regras de negócio:
+```bash
+python -m PyInstaller --noconsole --onefile --icon=app_icon.ico --name=Validador_Comentarios_PDA --collect-all customtkinter --add-data "src;src" main.py
+```
+O executável final será salvo na pasta `dist/Validador_Comentarios_PDA.exe`.
