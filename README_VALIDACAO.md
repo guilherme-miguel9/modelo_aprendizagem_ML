@@ -29,53 +29,49 @@ O sistema classifica os comentários em 8 categorias:
 |--------|-----------|-------------------|
 | **C** | CONFORME | Comentário atende aos requisitos da nota |
 | **SC** | SEM COMENTÁRIO | Nota exige informação mas comentário está vazio |
-| **UCE** | USO DE CARACTERE ESPECIAL | Comentário contém caracteres especiais (* . ; _ - #) |
-| **EE** | EXCESSO DE ESPAÇO | Comentário tem 3+ espaços consecutivos |
-| **FL** | FALTA A LEITURA | Nota exige leitura mas não foi informada |
-| **CFP** | COMENTÁRIO FORA DO PADRÃO | Comentário tem mais informações que o padrão (mais de 2 números ou contém letras) |
-| **CI** | COMENTÁRIO INCORRETO | Conteúdo não atende à necessidade da nota |
-| **NI** | NOTA INCORRETA | Informação corresponde a outra nota |
+| **UCE** | USO DE CARACTERE ESPECIAL | Comentário contém qualquer caractere especial (* . ; _ - # / @ ! ? , : etc.) |
+| **EE** | EXCESSO DE ESPAÇO | Comentário tem 3+ espaços consecutivos (`   `) |
+| **FL** | FALTA A LEITURA | Nota exige leitura junto com medidor/função, mas foi informado apenas 1 número |
+| **CFP** | COMENTÁRIO FORA DO PADRÃO | Comentário tem mais informações que o padrão (excesso de números, letras não permitidas, ou `03` nas notas `T181` e `R111`) |
+| **CI** | COMENTÁRIO INCORRETO | Conteúdo numérico ou formato não atende à necessidade da nota (ex: poste inválido) |
+| **NI** | NOTA INCORRETA | Comentário não faz sentido com a nota solicitada (ex: texto sem números em notas que exigem medidor/leitura) |
 
-## Regras por Tipo de Nota
+## Regras e Especificidades por Tipo de Nota
+
+### Regras Gerais e Tokens Permitidos
+- **Tokens Permitidos (`S`, `SELO`, `ZELO`, `NR DI`, `NR RE`, `R`, `NR IM`):** Podem aparecer em **qualquer nota** sem serem considerados letras inválidas para `CFP`.
+  - **Uso isolado (somente o token):** É aceito como Conforme (`C`) **apenas** nas notas que não exigem comentário numérico (`L131`, `T171`, `P191`, `T161`). Em notas que exigem comentário obrigatório (`B111`, `P111`, `T181`, etc.), o uso isolado do token é classificado como `NI` (Nota Incorreta).
+- **Prefixos `103` ou `55` (+ até 6 dígitos):** Permitidos em **todas as notas**. Representam numerações válidas (ex: `103123456` ou `55 123456`) sem estourar o limite de números da nota.
+- **Restrição do `03` em `T181` e `R111`:** As notas **`T181`** e **`R111`** **não podem** conter `03` (seja sozinho ou `03` + até 6 dígitos, ex: `03 15040`, `0312345`). Caso possuam, serão rotuladas como **`CFP`**.
 
 ### Notas que requerem MEDIDOR + LEITURA
 - **B111** - Local Cons. Implantado em Duplicidade
 - **P111** - E.M. Substituído ou Número Incorreto  
 - **P131** - E.M. Vizinho Não Cadastrado
-- **T171** - Data/Hora do E.M. Incorreta
+- **T171** - Data/Hora do E.M. Incorreta (exige funções `01` ou `02` no comentário)
 
-**Regra:** Aceita comentários com pelo menos um número (medidor ou leitura)
+**Regra:** Exigem 2 números (ou 1 número no formato prefixo `103`/`55` + dígitos). Comentários puramente textuais retornam `NI`.
 
-### Notas que requerem Nº DO POSTE (M000000)
+### Notas que requerem Nº DO POSTE (M000000 ou X000)
 - **E101** - Poste Inclinado ou Quebrado
 - **E111** - Objeto, Árvore, Imóvel Encostado/Próximo à Rede
 - **P231** - Iluminação Pública Acesa Durante o Dia
 
-**Regra:** Aceita formato M seguido de 6 dígitos (ex: M123456)
+**Regra:** Exigem formato `M` seguido de 6 dígitos ou `X` seguido de número. Textos sem números geram `NI`.
 
 ### Notas que requerem TEXTO CONDIZENTE
-- **C111** - Bairro Incorreto
-- **C121** - Rua Incorreta
-- **C131** - Número da Porta/Porta Incorreto
-- **C151** - Atividade Incorreta
-- **C161** - Quant. Incorreta de Dígitos do E.M.
-- **C181** - Número do Poste Incorreto
-- **P191** - U.C. Vizinha Com Ligação Clandestina
-- **R161** - Ponto de Referência Incorreto
+- **C111**, **C121**, **C131**, **C151**, **C161**, **C181**, **P191**, **R161**
 
-**Regra:** Aceita qualquer texto ou número
+**Regra:** Aceitam qualquer texto explicativo ou número.
 
 ### Notas de Campanha
-- **L121** - Campanha 1 (Verificação manual, não processado pelo robô)
-- **L131** - Campanha 2
-
-**Regra (L131):** Aceita comentários vazios, "s", números de telefone, textos informativos
-**Regra (L121):** Ignorado pelo robô, preservando a análise original do usuário no arquivo.
+- **L121** - Campanha 1 (**Ignorado pelo robô**, preservando a análise original na planilha)
+- **L131** - Campanha 2 (Aceita comentários vazios, "s", tokens permitidos, telefones, etc.)
 
 ### Notas Específicas
-- **R111** - Medidor Alocado Incorretamente (aceita qualquer comentário)
-- **T161** - Função Não Existe no PDA (aceita apenas código de função 2 dígitos)
-- **T181** - Função Não Existe no Sistema (aceita qualquer formato com números)
+- **R111** - Medidor Alocado Incorretamente (exige números; se contiver `03` rotula como `CFP`)
+- **T161** - Função Não Existe no PDA (aceita apenas código de função com 2 dígitos ou tokens permitidos)
+- **T181** - Função Não Existe no Sistema (exige função + leitura; se contiver `03` rotula como `CFP`)
 
 ## Como Usar
 
