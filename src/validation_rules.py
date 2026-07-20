@@ -69,9 +69,9 @@ class CommentValidator:
         if self._tem_excesso_espacos(comentario):
             return "EE"
             
-        # Verificar se as notas T181 ou R111 possuem 03 (+ até 6 dígitos), configurando CFP
+        # Verificar se as notas T181 ou R111 possuem 03 (como token isolado ou começando com 03), configurando CFP
         if nota in ["T181", "R111"]:
-            if re.search(r'\b03\d{0,6}\b', comentario):
+            if re.match(r'^03', comentario.strip()) or re.search(r'\b03\b', comentario):
                 return "CFP"
                 
         # Verificar se o comentário possui apenas os tokens permitidos (S | SELO | ZELO | NR DI | NR RE | R | NR IM)
@@ -163,8 +163,11 @@ class CommentValidator:
                 return "C"
             return "FL"  # Falta leitura
             
-        tem_prefixo = any(re.match(r'^(103|55)\d{0,6}$', num) for num in numeros)
+        tem_prefixo = any(re.match(r'^(103|55|03|3)\d{0,6}$', num) or num in ['03', '3'] for num in numeros)
         limite_numeros = 3 if tem_prefixo else 2
+        prefixos_encontrados = sum(1 for num in numeros if re.match(r'^(103|55|03|3)\d{0,6}$', num) or num in ['03', '3'])
+        if prefixos_encontrados >= 2:
+            limite_numeros = 4
         
         if len(numeros) > limite_numeros:
             return "CFP"
@@ -207,18 +210,24 @@ class CommentValidator:
         return "C"
     
     def _validar_medidor_sem_leitura(self, comentario: str) -> str:
-        """Valida: UM OU DOIS MEDIDORES (SEM LEITURA)"""
-        numeros = re.findall(r'\d+', comentario)
-        if len(numeros) == 0:
+        """Valida: UM OU DOIS MEDIDORES (SEM LEITURA), aceitando medidores com letras em suas variações (ex: MV08207)"""
+        if not re.search(r'\d', comentario):
             return "NI"
             
-        if self._contem_letras_nao_permitidas(comentario):
-            return "CFP"
-            
-        tem_prefixo = any(re.match(r'^(103|55)\d{0,6}$', num) for num in numeros)
-        limite_numeros = 3 if tem_prefixo else 2
+        palavras = comentario.upper().split()
+        for p in palavras:
+            p_limpa = re.sub(r'[^A-Z0-9]', '', p)
+            if p_limpa and not any(c.isdigit() for c in p_limpa) and p_limpa not in self.tokens_permitidos:
+                return "CFP"
+                
+        itens = [p for p in palavras if any(c.isdigit() for c in p)]
+        tem_prefixo = any(re.match(r'^(103|55|03|3)\d{0,6}$', item) or item in ['03', '3'] for item in itens)
+        limite = 3 if tem_prefixo else 2
+        prefixos_encontrados = sum(1 for item in itens if re.match(r'^(103|55|03|3)\d{0,6}$', item) or item in ['03', '3'])
+        if prefixos_encontrados >= 2:
+            limite = 4
         
-        if len(numeros) > limite_numeros:
+        if len(itens) > limite:
             return "CFP"
             
         return "C"
@@ -245,8 +254,11 @@ class CommentValidator:
                 return "CI"
             return "FL"
             
-        tem_prefixo = any(re.match(r'^(103|55)\d{0,6}$', num) for num in numeros)
+        tem_prefixo = any(re.match(r'^(103|55|03|3)\d{0,6}$', num) or num in ['03', '3'] for num in numeros)
         limite_numeros = 3 if tem_prefixo else 2
+        prefixos_encontrados = sum(1 for num in numeros if re.match(r'^(103|55|03|3)\d{0,6}$', num) or num in ['03', '3'])
+        if prefixos_encontrados >= 2:
+            limite_numeros = 4
         
         if len(numeros) > limite_numeros:
             return "CFP"
@@ -308,7 +320,11 @@ if __name__ == "__main__":
         ("L131", "SELO", "C"), # Token permitido sozinho em nota sem comentário obrigatório -> C
         ("P111", "SELO", "NI"), # Token permitido sozinho em nota com comentário obrigatório -> NI
         ("T181", "103 15040.", "UCE"), # Caractere especial -> UCE
-        ("P111", "cliente nao estava", "NI") # Comentário não faz sentido com a nota -> NI
+        ("P111", "cliente nao estava", "NI"), # Comentário não faz sentido com a nota -> NI
+        ("T181", "103 03221", "C"), # Leitura iniciada com 03 no T181 -> C
+        ("T181", "55 034429", "C"), # Leitura iniciada com 03 no T181 (função 55) -> C
+        ("R111", "MV08207 3181313071", "C"), # Medidor alfanumérico no R111 -> C
+        ("P111", "5260328370 03 00000", "C") # Leitura 03 no P111 -> C
     ]
     
     print("Testes de validacao:")

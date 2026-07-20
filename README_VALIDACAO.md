@@ -42,15 +42,17 @@ O sistema classifica os comentários em 8 categorias:
 - **Tokens Permitidos (`S`, `SELO`, `ZELO`, `NR DI`, `NR RE`, `R`, `NR IM`):** Podem aparecer em **qualquer nota** sem serem considerados letras inválidas para `CFP`.
   - **Uso isolado (somente o token):** É aceito como Conforme (`C`) **apenas** nas notas que não exigem comentário numérico (`L131`, `T171`, `P191`, `T161`). Em notas que exigem comentário obrigatório (`B111`, `P111`, `T181`, etc.), o uso isolado do token é classificado como `NI` (Nota Incorreta).
 - **Prefixos `103` ou `55` (+ até 6 dígitos):** Permitidos em **todas as notas**. Representam numerações válidas (ex: `103123456` ou `55 123456`) sem estourar o limite de números da nota.
-- **Restrição do `03` em `T181` e `R111`:** As notas **`T181`** e **`R111`** **não podem** conter `03` (seja sozinho ou `03` + até 6 dígitos, ex: `03 15040`, `0312345`). Caso possuam, serão rotuladas como **`CFP`**.
+- **Regra e Restrição do `03` (`T181`, `R111` vs `P111` e demais):**
+  - **Em `T181` e `R111`:** O código/função `03` **não pode** ser utilizado no início do comentário (`03 193872`, `0312345`) nem como token isolado (`03`), configurando **`CFP`**. No entanto, leituras que começam com os dígitos `03` precedidas de funções válidas como `103` ou `55` (ex: `103 03221`, `55 034429`, `103 03555`) são perfeitamente aceitas (`C`).
+  - **Em `P111`, `B111`, `P131`, `T171`:** Todas as outras notas **podem** conter a leitura ou o código `03` (ex: `5260328370 03 00000`), sendo validadas como Conforme (`C`).
 
 ### Notas que requerem MEDIDOR + LEITURA
 - **B111** - Local Cons. Implantado em Duplicidade
-- **P111** - E.M. Substituído ou Número Incorreto  
+- **P111** - E.M. Substituído ou Número Incorreto (aceita leitura/código `03`)
 - **P131** - E.M. Vizinho Não Cadastrado
 - **T171** - Data/Hora do E.M. Incorreta (exige funções `01` ou `02` no comentário)
 
-**Regra:** Exigem 2 números (ou 1 número no formato prefixo `103`/`55` + dígitos). Comentários puramente textuais retornam `NI`.
+**Regra:** Exigem 2 números (ou até 3 a 4 quando há códigos como `03`, `103` ou `55`). Comentários puramente textuais retornam `NI`.
 
 ### Notas que requerem Nº DO POSTE (M000000 ou X000)
 - **E101** - Poste Inclinado ou Quebrado
@@ -69,9 +71,9 @@ O sistema classifica os comentários em 8 categorias:
 - **L131** - Campanha 2 (Aceita comentários vazios, "s", tokens permitidos, telefones, etc.)
 
 ### Notas Específicas
-- **R111** - Medidor Alocado Incorretamente (exige números; se contiver `03` rotula como `CFP`)
+- **R111** - Medidor Alocado Incorretamente (exige um ou dois medidores sem leitura, aceitando medidores alfanuméricos com letras como `MV08207`, `NF16588`; se começar com ou contiver token isolado `03`, rotula como `CFP`)
 - **T161** - Função Não Existe no PDA (aceita apenas código de função com 2 dígitos ou tokens permitidos)
-- **T181** - Função Não Existe no Sistema (exige função + leitura; se contiver `03` rotula como `CFP`)
+- **T181** - Função Não Existe no Sistema (exige função + leitura; aceita leituras `03...` com função `103`/`55`, mas se a função for `03` rotula como `CFP`)
 
 ## Como Usar
 
