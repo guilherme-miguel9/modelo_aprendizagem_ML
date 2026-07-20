@@ -77,7 +77,7 @@ class MetricBadge(ctk.CTkFrame):
 
 
 class AuditorComentariosApp(ctk.CTk):
-    """Painel principal do Auditor de Comentários PDA - Paleta Azul Escuro Navy & Sidebar Funcional"""
+    """Painel principal do Auditor de Comentários PDA - Paleta Azul Escuro Navy & Sidebar Funcional (Sem Regras & Tokens)"""
     def __init__(self):
         super().__init__()
 
@@ -109,7 +109,7 @@ class AuditorComentariosApp(ctk.CTk):
         self._switch_view("visao_geral")
 
     def _build_sidebar(self):
-        """Painel lateral esquerdo com botões 100% funcionais (Azul Escuro Navy)"""
+        """Painel lateral esquerdo com 3 abas funcionais em Azul Escuro Navy"""
         sidebar_frame = ctk.CTkFrame(self, fg_color="#14161F", corner_radius=0, border_color="#222636", border_width=1)
         sidebar_frame.grid(row=0, column=0, sticky="nsew")
         sidebar_frame.grid_rowconfigure(6, weight=1)
@@ -142,13 +142,12 @@ class AuditorComentariosApp(ctk.CTk):
         # Divisor
         ctk.CTkFrame(sidebar_frame, height=1, fg_color="#222636").grid(row=1, column=0, sticky="ew", padx=16, pady=6)
 
-        # Botões do Sidebar Funcional
+        # Botões do Sidebar Funcional (Sem aba Regras & Tokens)
         self.nav_buttons = {}
         nav_configs = [
             ("visao_geral", "⚡ Visão Geral", 2),
             ("planilhas", "📁 Planilha & Pastas", 3),
-            ("regras", "⚙ Regras & Tokens", 4),
-            ("historico", "📊 Histórico Auditoria", 5),
+            ("historico", "📊 Histórico Auditoria", 4),
         ]
 
         for tab_id, label, row_idx in nav_configs:
@@ -173,7 +172,7 @@ class AuditorComentariosApp(ctk.CTk):
 
         ctk.CTkLabel(
             info_card,
-            text="Validador PDA v2.0",
+            text="Validador PDA v2.1",
             font=ctk.CTkFont(family="Segoe UI", size=12, weight="bold"),
             text_color="#D8DBE8"
         ).pack(pady=(12, 4), padx=14, anchor="w")
@@ -187,17 +186,16 @@ class AuditorComentariosApp(ctk.CTk):
         ).pack(pady=(0, 12), padx=14, anchor="w")
 
     def _build_main_container(self):
-        """Container central que abriga os 4 painéis de visualização (abas)"""
+        """Container central que abriga os painéis de visualização (abas)"""
         self.main_container = ctk.CTkFrame(self, fg_color="transparent")
         self.main_container.grid(row=0, column=1, sticky="nsew")
         self.main_container.grid_columnconfigure(0, weight=1)
         self.main_container.grid_rowconfigure(0, weight=1)
 
-        # Construir as 4 views
+        # Construir as views
         self.views = {}
         self.views["visao_geral"] = self._create_visao_geral_view()
         self.views["planilhas"] = self._create_planilhas_view()
-        self.views["regras"] = self._create_regras_view()
         self.views["historico"] = self._create_historico_view()
 
     def _switch_view(self, tab_id):
@@ -464,59 +462,7 @@ class AuditorComentariosApp(ctk.CTk):
         return view
 
     # =========================================================================
-    # VIEW 3: REGRAS & TOKENS OPERACIONAIS
-    # =========================================================================
-    def _create_regras_view(self):
-        view = ctk.CTkScrollableFrame(
-            self.main_container, fg_color="transparent", scrollbar_button_color="#222636", scrollbar_button_hover_color="#33394E"
-        )
-        view.grid_columnconfigure(0, weight=1)
-
-        ctk.CTkLabel(
-            view,
-            text="Manual Rápido de Regras e Tokens Operacionais",
-            font=ctk.CTkFont(family="Segoe UI", size=24, weight="bold"),
-            text_color="#FFFFFF"
-        ).grid(row=0, column=0, pady=(10, 18), sticky="w")
-
-        regras_text = """
-1. TOKENS PERMITIDOS EM QUALQUER NOTA:
-   • Tokens: S, SELO, ZELO, NR DI, NR RE, R, NR IM
-   • O robô não considera essas palavras como letras inválidas na checagem de CFP.
-   • Uso isolado (somente o token no texto): É classificado como Conforme (C) apenas nas notas puramente textuais (L131, T171, P191). Em notas de medidor/leitura, retorna Nota Incorreta (NI).
-
-2. PREFIXOS OPERACIONAIS EM MEDIDORES E POSTES:
-   • Letras prefixadas a numerações (ex: S202184113, s138628, MV08207, NF16588) fazem parte da nomenclatura oficial e são perfeitamente aceitas (C).
-   • Postes (E101, E111, P231): Aceitam os formatos M000000, S000000 (1 letra M ou S seguida de 6 dígitos) e X000.
-
-3. MÚLTIPLOS PARES DE CÓDIGO E LEITURA (MEDIDOR + LEITURA):
-   • As notas P111, B111, T181, R111 aceitam que um ou dois medidores sejam seguidos por múltiplos pares de código (até 3 dígitos) e leitura (até 6 dígitos).
-   • Exemplo válido: 3203600940 3 012051 24 001929 ou 6252237400 03 999999 103 999999.
-
-4. REGRA DO CÓDIGO 03 (T181 / R111 vs P111 / B111):
-   • Em T181 e R111: O código 03 isolado ou no início de comentário configura CFP. Mas leituras iniciadas com 03 após funções como 103 ou 55 são aceitas.
-   • Em P111, B111 e demais notas: O código ou leitura 03 é 100% aceito (C).
-
-5. MENÇÃO A OUTRAS NOTAS NO TEXTO:
-   • Comentários que mencionam códigos de notas ([A-Z] + 3 dígitos, ex: T111, T181, P111) têm o código da nota reconhecido e ignorado no filtro de letras prohibited.
-        """
-
-        card = RaisedGlassCard(view, corner_radius=18, fg_color="#181A24", border_color="#282C3E")
-        card.grid(row=1, column=0, pady=10, sticky="ew")
-        card.grid_columnconfigure(0, weight=1)
-
-        ctk.CTkLabel(
-            card,
-            text=regras_text.strip(),
-            font=ctk.CTkFont(family="Segoe UI", size=13),
-            text_color="#D8DBE8",
-            justify="left"
-        ).grid(row=0, column=0, padx=22, pady=20, sticky="w")
-
-        return view
-
-    # =========================================================================
-    # VIEW 4: HISTÓRICO DA AUDITORIA
+    # VIEW 3: HISTÓRICO DA AUDITORIA
     # =========================================================================
     def _create_historico_view(self):
         view = ctk.CTkScrollableFrame(
@@ -661,7 +607,7 @@ class AuditorComentariosApp(ctk.CTk):
                 else:
                     df['ANÁLISE'] = None
 
-            # Aplicar validação por regras de forma resiliente
+            # Aplicar validação por regras de forma resiliente e à prova de variações de assinatura
             func_val = aplicar_validacao_func
             if func_val is None:
                 try:
@@ -669,7 +615,10 @@ class AuditorComentariosApp(ctk.CTk):
                 except ImportError:
                     from validation_rules import aplicar_validacao as func_val
 
-            df = func_val(df, coluna_comentario='Coment_leitura', coluna_nota='Nota_leit', coluna_analise='ANÁLISE')
+            try:
+                df = func_val(df, coluna_comentario='Coment_leitura', coluna_nota='Nota_leit', coluna_analise='ANÁLISE')
+            except TypeError:
+                df = func_val(df)
 
             self.progress_bar.set(0.75)
             self.status_lbl.configure(text="Gravando planilha Excel validada na mesma pasta...")
