@@ -1,6 +1,6 @@
-# Auditor de Comentários PDA — Sistema de Validação Operacional
+# Auditoria de Registros Operacionais — Sistema de Validação
 
-O **Auditor de Comentários PDA** é uma solução inteligente e automatizada para validação e auditoria operacional de justificativas registradas por leituristas em coletores de dados (PDA). O sistema analisa instantaneamente dezenas de milhares de registros, aplicando regras operacionais de negócio de alta precisão para identificar não conformidades, erros de digitação e desvios de processo no campo.
+A **Auditoria de Registros Operacionais** é uma solução inteligente e automatizada para validação e auditoria operacional de justificativas registradas por leituristas em coletores de dados. O sistema analisa instantaneamente dezenas de milhares de registros, aplicando regras operacionais de negócio de alta precisão para identificar não conformidades, erros de digitação e desvios de processo no campo.
 
 ---
 
@@ -52,7 +52,7 @@ Para utilizar o sistema em computadores Windows **sem necessidade de instalar Py
 
 O arquivo executável pronto e compilado fica disponível na pasta `dist/`:
 ```bash
-dist/Validador_Comentarios_PDA.exe
+dist/Auditoria_Registros_Operacionais.exe
 ```
 
 ---
@@ -60,7 +60,7 @@ dist/Validador_Comentarios_PDA.exe
 ## 🛠️ Estrutura do Projeto
 
 ```
-auditor-de-comentarios/
+auditoria-registros-operacionais/
 ├── main.py                  # Painel Desktop Interativo (CustomTkinter GUI)
 ├── app_icon.ico             # Ícone do aplicativo para compilação Windows
 ├── requirements.txt         # Dependências Python do projeto
@@ -71,7 +71,7 @@ auditor-de-comentarios/
 │   ├── validation_rules.py    # Motor com todas as regras operacionais de negócio e testes unitários
 │   └── validar_comentarios.py # Script CLI principal para auditoria em lote e manipulação de DataFrames
 └── dist/
-    └── Validador_Comentarios_PDA.exe  # Aplicativo executável autônomo compilado
+    └── Auditoria_Registros_Operacionais.exe  # Aplicativo executável autônomo compilado
 ```
 
 ---
@@ -98,6 +98,6 @@ python src/validar_comentarios.py --input "caminho/para/planilha.xlsm" --output 
 ### 4. Compilar novo Executável (`.exe`)
 Para gerar um novo arquivo `.exe` após realizar alterações nas regras de negócio:
 ```bash
-python -m PyInstaller --noconsole --onefile --icon=app_icon.ico --name=Validador_Comentarios_PDA --collect-all customtkinter --add-data "src;src" main.py
+python -m PyInstaller --noconsole --onefile --icon=app_icon.ico --name=Auditoria_Registros_Operacionais --collect-all customtkinter --add-data "src;src" main.py
 ```
-O executável final será salvo na pasta `dist/Validador_Comentarios_PDA.exe`.
+O executável final será salvo na pasta `dist/Auditoria_Registros_Operacionais.exe`.

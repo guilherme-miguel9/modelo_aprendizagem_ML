@@ -75,7 +75,7 @@ O sistema classifica os comentários em 8 categorias:
 
 ### Notas Específicas
 - **R111** - Medidor Alocado Incorretamente (exige um ou dois medidores sem leitura, aceitando medidores alfanuméricos com letras como `MV08207`, `NF16588`; se começar com ou contiver token isolado `03`, rotula como `CFP`)
-- **T161** - Função Não Existe no PDA (aceita apenas código de função com 2 dígitos ou tokens permitidos)
+- **T161** - Função Não Existe no Coletor (aceita apenas código de função com 2 dígitos ou tokens permitidos)
 - **T181** - Função Não Existe no Sistema (exige função + leitura; aceita leituras `03...` com função `103`/`55`, mas se a função for `03` rotula como `CFP`)
 
 ## Como Usar
