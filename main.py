@@ -364,6 +364,10 @@ class AuditorComentariosApp(ctk.CTk):
             ("Espaço Exc. (EE)", "EE", "#3498DB", 2, 1),
             ("Coment. Inc. (CI)", "CI", "#F1C40F", 2, 2),
             ("Caractere Esp. (UCE)", "UCE", "#E67E22", 2, 3),
+            ("Total Analisado", "TOTAL_ANALISADO", "#3B82F6", 3, 0),
+            ("Inconformidades (Não-C)", "TOTAL_INCONF", "#E74C3C", 3, 1),
+            ("% Inconf. / Conforme", "RAZAO_INCONF_C", "#F39C12", 3, 2),
+            ("% Inconf. Geral", "TAXA_INCONF_GERAL", "#9B59B6", 3, 3),
         ]
 
         for label, key, color, row, col in metric_configs:
@@ -371,7 +375,7 @@ class AuditorComentariosApp(ctk.CTk):
             badge.grid(row=row, column=col, padx=10, pady=8, sticky="nsew")
             self.badges[key] = badge
 
-        ctk.CTkLabel(self.results_card, text="", height=6).grid(row=3, column=0, columnspan=4)
+        ctk.CTkLabel(self.results_card, text="", height=6).grid(row=4, column=0, columnspan=4)
 
         # RODAPÉ DE AÇÃO
         footer_frame = ctk.CTkFrame(view, fg_color="transparent")
@@ -633,9 +637,35 @@ class AuditorComentariosApp(ctk.CTk):
             self.progress_detail_lbl.configure(text=f"Planilha gravada perfeitamente em: {out_path}")
 
             dist = df['ANÁLISE'].value_counts().to_dict()
+            total_c = dist.get('C', 0)
+            inconf_keys = ['CFP', 'SC', 'FL', 'NI', 'EE', 'CI', 'UCE']
+            total_inconf = sum(dist.get(k, 0) for k in inconf_keys)
+            total_analisado = total_c + total_inconf
+
+            if total_c > 0:
+                razao_val = (total_inconf / total_c) * 100.0
+                razao_str = f"{razao_val:.2f}%".replace('.', ',')
+            else:
+                razao_str = "0,0%" if total_inconf == 0 else "N/A"
+
+            if total_analisado > 0:
+                taxa_val = (total_inconf / total_analisado) * 100.0
+                taxa_str = f"{taxa_val:.2f}%".replace('.', ',')
+            else:
+                taxa_str = "0,0%"
+
             for key in self.badges:
-                val = dist.get(key, 0)
-                self.badges[key].update_value(f"{val:,}".replace(',', '.'))
+                if key == "TOTAL_ANALISADO":
+                    self.badges[key].update_value(f"{total_analisado:,}".replace(',', '.'))
+                elif key == "TOTAL_INCONF":
+                    self.badges[key].update_value(f"{total_inconf:,}".replace(',', '.'))
+                elif key == "RAZAO_INCONF_C":
+                    self.badges[key].update_value(razao_str)
+                elif key == "TAXA_INCONF_GERAL":
+                    self.badges[key].update_value(taxa_str)
+                else:
+                    val = dist.get(key, 0)
+                    self.badges[key].update_value(f"{val:,}".replace(',', '.'))
 
             # Salvar estatísticas no histórico
             self.last_run_time = time.strftime("%d/%m/%Y às %H:%M:%S")
