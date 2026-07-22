@@ -132,8 +132,8 @@ class AuditorComentariosApp(ctk.CTk):
 
         title_lbl = ctk.CTkLabel(
             logo_frame,
-            text="Auditor PDA\nWorkspace",
-            font=ctk.CTkFont(family="Segoe UI", size=16, weight="bold"),
+            text="Auditoria de\nRegistros Operacionais",
+            font=ctk.CTkFont(family="Segoe UI", size=15, weight="bold"),
             text_color="#FFFFFF",
             justify="left"
         )
