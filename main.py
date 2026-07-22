@@ -77,12 +77,12 @@ class MetricBadge(ctk.CTkFrame):
 
 
 class AuditorComentariosApp(ctk.CTk):
-    """Painel principal do Auditor de Comentários PDA - Paleta Azul Escuro Navy & Sidebar Funcional (Sem Regras & Tokens)"""
+    """Painel principal de Auditoria de Registros Operacionais - Paleta Azul Escuro Navy & Sidebar Funcional"""
     def __init__(self):
         super().__init__()
 
         # Configuração da Janela Principal
-        self.title("Auditor de Comentários — Sistema de Validação PDA")
+        self.title("Auditoria de Registros Operacionais — Sistema de Validação")
         self.geometry("1080x760")
         self.minsize(940, 660)
         self.configure(fg_color="#0F111A")
@@ -172,7 +172,7 @@ class AuditorComentariosApp(ctk.CTk):
 
         ctk.CTkLabel(
             info_card,
-            text="Validador PDA v2.1",
+            text="Auditoria Operacional v2.1",
             font=ctk.CTkFont(family="Segoe UI", size=12, weight="bold"),
             text_color="#D8DBE8"
         ).pack(pady=(12, 4), padx=14, anchor="w")
